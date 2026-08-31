@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Atlas AI Consulting · the whole of Workday, run properly</title>
 <meta name="description" content="A full scope Workday consulting practice. Senior consultants, every functional area watched, and an audit line behind every change. Powered by Alpaca Tools.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23F3F4F1'/><path d='M8 23V9l8 7 8-7v14' fill='none' stroke='%23B8431E' stroke-width='2.6'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23F3F4F1'/><path d='M16 4 28 11 16 18 4 11z' fill='%2316191A'/><path d='M4 13 16 20v11L4 24z' fill='%2316191A'/><path d='M28 13 16 20v11l12-7z' fill='%2316191A' opacity='.72'/><circle cx='6.5' cy='7' r='3' fill='%23B8431E'/></svg>"><rect width='32' height='32' rx='7' fill='%23F3F4F1'/><path d='M3 12 10 8l7 4-7 4z' fill='%2316191A'/><path d='M3 17 10 21l7-4v3l-7 4-7-4z' fill='%2316191A'/><path d='M17 19c3 0 4-4 8-5' fill='none' stroke='%230E7490' stroke-width='2.2' stroke-linecap='round'/><circle cx='19' cy='17' r='2' fill='%23B8431E'/><path d='M25 8 30 11l-5 3-5-3z' fill='%2316191A'/><path d='M20 12 25 15v6l-5-3z' fill='%2316191A'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Source+Sans+3:wght@400;600&display=swap">
@@ -112,6 +112,14 @@
     letter-spacing: var(--sc-track-wide); text-transform: uppercase;
     color: var(--sc-ink-soft);
   }
+  /* The mark, redrawn in the page's own palette rather than embedded as artwork: navy becomes
+     ink, the ribbon takes the teal already carrying inbound data on the diagram, and the node is
+     the accent. It stays sharp at any size and costs nothing to load. */
+  .mark { height: 18px; width: auto; flex: 0 0 auto; }
+  .mark .mark-solid { fill: var(--sc-ink); }
+  .mark .mark-flow { stroke: #0E7490; stroke-width: 3.4; }
+  .mark .mark-node { fill: var(--sc-accent); }
+  .mark--lg { height: 30px; margin-bottom: var(--sc-2); }
   .masthead b { color: var(--sc-ink); font-weight: 500; }
   .masthead a { margin-left: auto; color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
 
@@ -249,6 +257,21 @@
 </div>
 
 <div class="masthead">
+  <svg class="mark" viewBox="0 0 124 56" role="img" aria-label="Atlas AI Consulting">
+    <g class="mark-solid">
+      <path d="M4 17 25 7l21 10-21 10z"/><path d="M4 24 25 34l21-10v5L25 39 4 29z"/>
+      <path d="M4 33 25 43l21-10v5L25 48 4 38z"/>
+    </g>
+    <g class="mark-flow" fill="none" stroke-linecap="round">
+      <path d="M48 32c9 0 11-8 20-10s10 3 16 1"/>
+      <path d="M48 38c10 0 12-7 21-9s10 4 15 2"/>
+    </g>
+    <circle class="mark-node" cx="70" cy="29" r="4.6"/>
+    <g class="mark-solid">
+      <path d="M100 3 121 13l-21 10-21-10z"/><path d="M79 16 100 26v22L79 38z"/>
+      <path d="M121 16 100 26v22l21-10z" opacity=".82"/>
+    </g>
+  </svg>
   <b>Atlas AI Consulting</b> <span>Workday practice</span>
   <a href="#engage">Book a working session</a>
 </div>
@@ -378,7 +401,21 @@
       <p class="body">A working session is one conversation about one area with a senior consultant who has run it before. There is no deck. Write to <a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a> and say which area it is.</p>
       <div class="survey-stamp" id="surveyStamp" aria-hidden="true">Surveyed · complete · 2026 · sheet 1 of 1 · Atlas AI Consulting</div>
       <div class="imprint">
-        <span><b>Atlas AI Consulting</b><br>Workday consulting practice<br><span class="powered">Powered by Alpaca Tools&trade;</span></span>
+        <span><svg class="mark mark--lg" viewBox="0 0 124 56" role="img" aria-label="Atlas AI Consulting">
+          <g class="mark-solid">
+            <path d="M4 17 25 7l21 10-21 10z"/><path d="M4 24 25 34l21-10v5L25 39 4 29z"/>
+            <path d="M4 33 25 43l21-10v5L25 48 4 38z"/>
+          </g>
+          <g class="mark-flow" fill="none" stroke-linecap="round">
+            <path d="M48 32c9 0 11-8 20-10s10 3 16 1"/>
+            <path d="M48 38c10 0 12-7 21-9s10 4 15 2"/>
+          </g>
+          <circle class="mark-node" cx="70" cy="29" r="4.6"/>
+          <g class="mark-solid">
+            <path d="M100 3 121 13l-21 10-21-10z"/><path d="M79 16 100 26v22L79 38z"/>
+            <path d="M121 16 100 26v22l21-10z" opacity=".82"/>
+          </g>
+        </svg><br><b>Atlas AI Consulting</b><br>Workday consulting practice<br><span class="powered">Powered by Alpaca Tools&trade;</span></span>
         <span><a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a></span>
         <span>Workday is a trademark of Workday, Inc. We are not affiliated with, sponsored by, or endorsed by Workday.</span>
       </div>

@@ -143,14 +143,38 @@
     { k: 'badge',   id: 'Badge and access',  w: 0.35 }
   ];
 
-  // The two failures from chapter I, landing on the thing an executive actually feels: a file
-  // that stops leaving the tenant.
-  var RAISES = [
-    { k: 'bank',    at: 0.40, close: 0.70, week: 8,
-      cause: 'pay component maps to a retired earning', ledger: 'r1' },
-    { k: 'carrier', at: 0.52, close: 0.82, week: 10,
-      cause: 'carrier changed the file width at source', ledger: 'r2' }
+  /* Three incidents, one inbound and two outbound, each with a FOUR state life so a reader can
+     see the week it broke, the week we were working on it, and the week it came back.
+
+     The middle state is the one that was missing. Before this the chart went straight from
+     stopped to fine, which showed a problem and hid the work: the entire value of the engagement
+     happens between those two weeks, and it was invisible. Now the line says what is being done
+     to it and who is doing it. */
+  var INCIDENTS = [
+    { k: 'clocks', dir: 'in',
+      stop: 0.30, fix: 0.46, done: 0.58, wkStop: 4, wkFix: 6, wkDone: 7,
+      cause:  'clock export stopped after the vendor upgrade',
+      action: 're-pointed the export, backfilled three days',
+      ledger: 'r4' },
+    { k: 'bank', dir: 'out',
+      stop: 0.38, fix: 0.54, done: 0.66, wkStop: 5, wkFix: 7, wkDone: 8,
+      cause:  'pay component maps to a retired earning',
+      action: 'remapped the component, re-ran the audit',
+      ledger: 'r1' },
+    { k: 'carrier', dir: 'out',
+      stop: 0.50, fix: 0.64, done: 0.78, wkStop: 6, wkFix: 8, wkDone: 9,
+      cause:  'carrier changed the file width at source',
+      action: 'rebuilt the file spec to the new width',
+      ledger: 'r2' }
   ];
+
+  function stateOf(inc, p) {
+    if (p < inc.stop) return 'ok';
+    if (p < inc.fix)  return 'stopped';
+    if (p < inc.done) return 'fixing';
+    if (p < inc.done + 0.10) return 'restored';
+    return 'ok';
+  }
 
   // The real figure: the sum of the check counts this page prints for the seven functional areas.
   var CHECK_TOTAL = 4366;
@@ -171,8 +195,8 @@
   var eW = 0, eH = 0, eDpr = 1, HUB = null;
 
   function layout() {
-    HUB = { x: eW * 0.5, y: eH * 0.5, r: Math.max(44, Math.min(74, eW * 0.05)) };
-    var span = eH * 0.80, top = eH * 0.10;
+    HUB = { x: eW * 0.5, y: (eH - 54) * 0.5, r: Math.max(44, Math.min(74, eW * 0.05)) };
+    var span = (eH - 54) * 0.80, top = (eH - 54) * 0.10;
     INBOUND.forEach(function (s, i) {
       s.x = eW * 0.265; s.y = top + (i / (INBOUND.length - 1)) * span;
       s.c1 = { x: eW * 0.40, y: s.y }; s.c2 = { x: eW * 0.44, y: HUB.y };
@@ -224,45 +248,68 @@
 
   var CYCLE = { HOLD: 0.18, RUN: 0.28, CLOSE: 0.90 };
 
+  var OKC = '31,122,92';
+
   function paintEstate(p, t) {
     if (!ectx || !eW) return;
-    var secs = t / 1000, running = p > CYCLE.RUN, caught = 0;
+    var secs = t / 1000, running = p > CYCLE.RUN;
+    var fixed = 0, openNow = 0, working = 0;
 
-    var stopped = {};
-    RAISES.forEach(function (r) {
-      if (p >= r.at && p < r.close) stopped[r.k] = r;
-      else if (p >= r.close) { caught++; ledgerClose(r.ledger, 'week ' + r.week); }
+    var state = {};
+    INCIDENTS.forEach(function (inc) {
+      var st = stateOf(inc, p);
+      state[inc.k] = { s: st, inc: inc };
+      if (st === 'stopped') openNow++;
+      if (st === 'fixing') working++;
+      if (p >= inc.done) { fixed++; ledgerClose(inc.ledger, 'week ' + inc.wkDone); }
     });
-    if (p >= CYCLE.CLOSE) ledgerClose('r4', 'week 12');
 
     ectx.clearRect(0, 0, eW, eH);
     ectx.lineCap = 'round';
+    var chartH = eH - 54;                       // the strip below belongs to the timeline
 
     function side(list, dir, col) {
       list.forEach(function (s) {
-        var P = pathOf(s, dir), bad = stopped[s.k];
+        var P = pathOf(s, dir), st = state[s.k], kind = st ? st.s : 'ok';
+        var stroke = 'rgba(' + col + ',' + (0.14 + s.w * 0.16) + ')', lw = 0.7 + s.w * 1.4, dash = null;
+        if (kind === 'stopped')  { stroke = 'rgba(' + WARN + ',.95)'; lw = 2.2; dash = [6, 5]; }
+        if (kind === 'fixing')   { stroke = 'rgba(' + WARN + ',.8)';  lw = 2.0; dash = [2, 4]; }
+        if (kind === 'restored') { stroke = 'rgba(' + OKC + ',.9)';   lw = 2.0; }
+
         ectx.save();
-        ectx.strokeStyle = bad ? 'rgba(' + WARN + ',.85)' : 'rgba(' + col + ',' + (0.14 + s.w * 0.16) + ')';
-        ectx.lineWidth = bad ? 1.5 : 0.7 + s.w * 1.4;
-        if (bad) ectx.setLineDash([5, 4]);
+        ectx.strokeStyle = stroke; ectx.lineWidth = lw;
+        if (dash) { ectx.setLineDash(dash); ectx.lineDashOffset = kind === 'fixing' ? -secs * 26 : 0; }
         ectx.beginPath();
         ectx.moveTo(P.a.x, P.a.y);
         ectx.bezierCurveTo(P.c1.x, P.c1.y, P.c2.x, P.c2.y, P.b.x, P.b.y);
         ectx.stroke();
         ectx.restore();
 
+        // the marker: a stopped flow gets a ring that pulses, so the eye finds it without hunting
         ectx.save();
-        ectx.fillStyle = bad ? 'rgba(' + WARN + ',1)' : 'rgba(' + col + ',.95)';
-        ectx.beginPath(); ectx.arc(s.x, s.y, bad ? 4.4 : 3.4, 0, 6.284); ectx.fill();
+        var mc = kind === 'ok' ? col : kind === 'restored' ? OKC : WARN;
+        if (kind === 'stopped' || kind === 'fixing') {
+          var pulse = 0.5 + 0.5 * Math.sin(secs * (kind === 'stopped' ? 4.2 : 2.4));
+          ectx.strokeStyle = 'rgba(' + WARN + ',' + (0.15 + pulse * 0.5) + ')';
+          ectx.lineWidth = 1.4;
+          ectx.beginPath(); ectx.arc(s.x, s.y, 7 + pulse * 4, 0, 6.284); ectx.stroke();
+        }
+        ectx.fillStyle = 'rgba(' + mc + ',1)';
+        ectx.beginPath(); ectx.arc(s.x, s.y, kind === 'ok' ? 3.4 : 4.6, 0, 6.284); ectx.fill();
+
         ectx.textAlign = dir === 'in' ? 'right' : 'left';
-        var tx = s.x + (dir === 'in' ? -10 : 10);
+        var tx = s.x + (dir === 'in' ? -12 : 12);
         ectx.font = '500 11.5px "IBM Plex Mono", ui-monospace, monospace';
-        ectx.fillStyle = bad ? 'rgba(' + WARN + ',1)' : 'rgba(22,25,26,.78)';
-        ectx.fillText(s.id, tx, s.y + (bad ? -2 : 4));
-        if (bad) {
-          ectx.font = '9.5px "IBM Plex Mono", ui-monospace, monospace';
-          ectx.fillStyle = 'rgba(' + WARN + ',.9)';
-          ectx.fillText('STOPPED', tx, s.y + 11);
+        ectx.fillStyle = kind === 'ok' ? 'rgba(22,25,26,.78)' : 'rgba(' + mc + ',1)';
+        ectx.fillText(s.id, tx, s.y + (kind === 'ok' ? 4 : -2));
+        if (kind !== 'ok') {
+          var inc = st.inc;
+          var badge = kind === 'stopped'  ? 'STOPPED · week ' + inc.wkStop
+                    : kind === 'fixing'   ? 'FIXING · week ' + inc.wkFix
+                                          : 'RESTORED · week ' + inc.wkDone;
+          ectx.font = '600 9.5px "IBM Plex Mono", ui-monospace, monospace';
+          ectx.fillStyle = 'rgba(' + mc + ',1)';
+          ectx.fillText(badge, tx, s.y + 11);
         }
         ectx.restore();
       });
@@ -272,8 +319,10 @@
 
     if (!reduce) {
       PARTICLES.forEach(function (q) {
-        if (stopped[q.s.k]) return;                     // a stopped flow is a flow that STOPPED
-        var P = pathOf(q.s, q.dir), col = q.dir === 'in' ? IN_C : OUT_C;
+        var st = state[q.s.k];
+        if (st && (st.s === 'stopped' || st.s === 'fixing')) return;   // nothing is flowing
+        var P = pathOf(q.s, q.dir);
+        var col = st && st.s === 'restored' ? OKC : (q.dir === 'in' ? IN_C : OUT_C);
         var u = (q.u + secs * q.v) % 1;
         for (var k = 0; k < 4; k++) {
           var uu = u - k * 0.012;
@@ -287,20 +336,21 @@
 
     // the tenant
     var shown = running ? Math.round(CHECK_TOTAL * Math.min(1, (p - CYCLE.RUN) / 0.5)) : 0;
+    var hubY = HUB.y;
     ectx.save();
-    ectx.beginPath(); ectx.arc(HUB.x, HUB.y, HUB.r, 0, 6.284);
+    ectx.beginPath(); ectx.arc(HUB.x, hubY, HUB.r, 0, 6.284);
     ectx.fillStyle = 'rgba(255,255,255,.97)'; ectx.fill();
-    ectx.strokeStyle = Object.keys(stopped).length ? 'rgba(' + WARN + ',.8)' : 'rgba(22,25,26,.78)';
+    ectx.strokeStyle = openNow ? 'rgba(' + WARN + ',.9)' : working ? 'rgba(' + WARN + ',.5)' : 'rgba(22,25,26,.78)';
     ectx.lineWidth = 1.5; ectx.stroke();
-    ectx.beginPath(); ectx.arc(HUB.x, HUB.y, HUB.r + 7, 0, 6.284);
+    ectx.beginPath(); ectx.arc(HUB.x, hubY, HUB.r + 7, 0, 6.284);
     ectx.strokeStyle = 'rgba(22,25,26,.14)'; ectx.lineWidth = 1; ectx.stroke();
     ectx.textAlign = 'center';
     ectx.fillStyle = '#16191A';
     ectx.font = '600 16px "Source Sans 3", system-ui, sans-serif';
-    ectx.fillText('Workday', HUB.x, HUB.y - 4);
+    ectx.fillText('Workday', HUB.x, hubY - 4);
     ectx.font = '10px "IBM Plex Mono", ui-monospace, monospace';
     ectx.fillStyle = 'rgba(22,25,26,.55)';
-    ectx.fillText(shown ? shown.toLocaleString('en-US') + ' checks' : 'one tenant', HUB.x, HUB.y + 12);
+    ectx.fillText(shown ? shown.toLocaleString('en-US') + ' checks' : 'one tenant', HUB.x, hubY + 12);
     ectx.restore();
 
     ectx.font = '10px "IBM Plex Mono", ui-monospace, monospace';
@@ -309,26 +359,68 @@
     ectx.fillStyle = 'rgba(' + OUT_C + ',.85)';
     ectx.textAlign = 'right'; ectx.fillText('OUTBOUND', eW - 4, 12);
 
+    timeline(p, chartH);
+
+    var wk = Math.max(0, Math.min(12, Math.round(p * 12)));
     if (phaseEl) {
-      phaseEl.textContent = p < CYCLE.HOLD ? 'monitoring'
+      phaseEl.textContent = openNow ? openNow + ' stopped, ' + (working ? working + ' being fixed' : 'triaging')
+        : working ? working + ' being fixed'
+        : p < CYCLE.HOLD ? 'monitoring'
         : p < CYCLE.RUN ? 'release inbound'
-        : p < CYCLE.CLOSE ? 'release week, checks running' : 'cycle closed';
+        : p < CYCLE.CLOSE ? 'release week, checks running' : 'cycle closed, nothing open';
     }
-    if (clockEl) clockEl.textContent = 'week ' + Math.max(0, Math.min(12, Math.round(p * 12)));
+    if (clockEl) clockEl.textContent = 'week ' + wk;
     if (sAreas) sAreas.textContent = INBOUND.length + OUTBOUND.length;
     if (sChecks) sChecks.textContent = shown.toLocaleString('en-US');
-    if (sCaught) sCaught.textContent = caught;
+    if (sCaught) sCaught.textContent = fixed;
     if (noteEl) {
-      var open = Object.keys(stopped).map(function (k) { return stopped[k]; });
-      noteEl.textContent = open.length
-        ? open.map(function (r) { return r.cause; }).join('  ·  ')
+      var live = INCIDENTS.filter(function (i) { return stateOf(i, p) === 'fixing'; });
+      var brk = INCIDENTS.filter(function (i) { return stateOf(i, p) === 'stopped'; });
+      noteEl.textContent = live.length ? 'we are ' + live.map(function (i) { return i.action; }).join(' · we are ')
+        : brk.length ? brk.map(function (i) { return i.cause; }).join(' · ')
         : 'representative cycle';
-      noteEl.style.color = open.length ? 'rgb(' + WARN + ')' : '';
+      noteEl.style.color = live.length ? 'rgb(' + WARN + ')' : brk.length ? 'rgb(' + WARN + ')' : '';
     }
     if (estateEl) {
-      estateEl.setAttribute('data-sc-verify-state',
-        [phaseEl ? phaseEl.textContent : '', shown, Object.keys(stopped).length, caught].join('|'));
+      estateEl.setAttribute('data-sc-verify-state', [wk, shown, openNow, working, fixed].join('|'));
     }
+  }
+
+  /* The week ruler. "More obvious week to week" is really a request for an axis: without one, a
+     reader has no way to tell whether anything changed between two moments. Events flag on it at
+     the week they happen and stay flagged, so the whole cycle is legible from any position. */
+  function timeline(p, y) {
+    var x0 = eW * 0.10, x1 = eW * 0.90, w = x1 - x0;
+    var wkNow = Math.max(0, Math.min(12, p * 12));
+    ectx.save();
+    ectx.strokeStyle = 'rgba(22,25,26,.22)'; ectx.lineWidth = 1;
+    ectx.beginPath(); ectx.moveTo(x0, y + 16); ectx.lineTo(x1, y + 16); ectx.stroke();
+    ectx.font = '9px "IBM Plex Mono", ui-monospace, monospace';
+    ectx.textAlign = 'center';
+    for (var k = 0; k <= 12; k++) {
+      var x = x0 + (k / 12) * w, on = k <= wkNow;
+      ectx.strokeStyle = on ? 'rgba(22,25,26,.45)' : 'rgba(22,25,26,.16)';
+      ectx.beginPath(); ectx.moveTo(x, y + 12); ectx.lineTo(x, y + 20); ectx.stroke();
+      if (k % 2 === 0) {
+        ectx.fillStyle = on ? 'rgba(22,25,26,.55)' : 'rgba(22,25,26,.25)';
+        ectx.fillText('wk ' + k, x, y + 32);
+      }
+    }
+    // travelled portion
+    ectx.strokeStyle = 'rgba(' + '184,67,30' + ',.75)'; ectx.lineWidth = 2;
+    ectx.beginPath(); ectx.moveTo(x0, y + 16); ectx.lineTo(x0 + (wkNow / 12) * w, y + 16); ectx.stroke();
+
+    INCIDENTS.forEach(function (inc) {
+      [['stop', inc.wkStop, WARN], ['done', inc.wkDone, OKC]].forEach(function (e) {
+        if (wkNow + 0.01 < e[1]) return;
+        var x = x0 + (e[1] / 12) * w;
+        ectx.fillStyle = 'rgba(' + e[2] + ',.95)';
+        ectx.beginPath();
+        ectx.moveTo(x, y + 16 - 7); ectx.lineTo(x + 4, y + 16 - 2); ectx.lineTo(x - 4, y + 16 - 2);
+        ectx.closePath(); ectx.fill();
+      });
+    });
+    ectx.restore();
   }
 
   function rng(seed) {
