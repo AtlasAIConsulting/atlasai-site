@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas AI Consulting · the whole of Workday, run properly</title>
+<meta name="description" content="A full scope Workday consulting practice. Senior consultants, purpose-built tooling, every functional area watched, and an audit line behind every change.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23F3F4F1'/><path d='M8 23V9l8 7 8-7v14' fill='none' stroke='%23B8431E' stroke-width='2.6'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="scrollcraft.css">
+<style>
+  /* ── a light ground, which inverts four things at once ──────────────────────────────────────
+     The engine's depth tokens are tuned for a near-black canvas: its inset edge highlight reads
+     as dirt along the top lip of a card on paper, and its shadow alphas are far too heavy. Both
+     are corrected here once, rather than worked around per component. */
+  :root {
+    --sc-canvas:     #F3F4F1;
+    --sc-surface:    #FFFFFF;
+    --sc-ink:        #16191A;
+    --sc-ink-soft:   #5B6360;
+    --sc-accent:     #B8431E;
+    --sc-accent-ink: #FFFFFF;
+
+    --sc-font-display: "Newsreader", Georgia, "Times New Roman", serif;
+    --sc-font-text:    "Source Sans 3", system-ui, -apple-system, sans-serif;
+    --sc-font-mono:    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --sc-edge:         rgba(255, 255, 255, .9);
+    --sc-shadow-color: 26 30 28;
+    --sc-e1: 0 1px 2px rgba(26, 30, 28, .06);
+    --sc-e2: 0 2px 8px rgba(26, 30, 28, .07);
+    --sc-e3: 0 10px 30px rgba(26, 30, 28, .09);
+
+    /* Semantic, and separate from the accent. On this page they are the only other colours. */
+    --ok:    #1F7A5C;
+    --watch: #A0620A;
+    --issue: #A32C1D;
+    --rule:      rgba(22, 25, 26, .14);
+    --rule-soft: rgba(22, 25, 26, .08);
+    --paper-2:   #FFFFFF;
+  }
+
+  body { background: var(--sc-canvas); color: var(--sc-ink); font-family: var(--sc-font-text); }
+  ::selection { background: color-mix(in oklab, var(--sc-accent) 22%, transparent); }
+
+  /* ── the ledger: the page's own audit trail, kept in the margin ─────────────────────────── */
+  .ledger {
+    position: fixed; z-index: 20; left: var(--sc-4); top: 50%; transform: translateY(-50%);
+    width: 15rem; padding: var(--sc-3); pointer-events: none;
+    border-left: 2px solid var(--sc-ink);
+    font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.5;
+    opacity: 0; transition: opacity var(--sc-d-base, .2s) ease;
+  }
+  .ledger.is-live { opacity: 1; }
+  .ledger ol { max-height: 52vh; overflow: hidden; }
+  /* The CONTENT is offset to leave the margin the ledger lives in, the way a printed page with
+     marginalia does. Padding `main` instead pulled the chapter grounds off the left edge and left
+     a visible seam down the page, because a chapter's ground is meant to bleed. */
+  @media (min-width: 1321px) {
+    .sheet, .board-stage, .masthead { padding-left: calc(var(--sc-gutter) + 16rem); }
+  }
+  .ledger__h { display: block; margin-bottom: var(--sc-2); letter-spacing: var(--sc-track-wide); text-transform: uppercase; color: var(--sc-ink); font-weight: 500; }
+  .ledger ol { margin: 0; padding: 0; list-style: none; display: grid; gap: .3em; }
+  .ledger li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: .4em; color: var(--sc-ink-soft); }
+  .ledger .lg-mk { color: var(--sc-accent); }
+  .ledger li.is-closed .lg-mk { color: var(--ok); }
+  .ledger li.is-open .lg-mk { color: var(--watch); font-weight: 500; }
+  .ledger.is-signed .ledger__stat { color: var(--ok); }
+  .ledger .lg-st { grid-column: 2; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; opacity: .75; }
+  .ledger li.is-closed .lg-tx { text-decoration: line-through; text-decoration-color: var(--rule); }
+  .ledger__stat { display: block; margin-top: var(--sc-3); padding-top: var(--sc-2); border-top: 1px solid var(--rule); color: var(--sc-ink); }
+  @media (max-width: 1320px) {
+    /* The trail is the argument, so it is never hidden: it becomes a strip instead. */
+    .ledger {
+      left: 0; right: 0; top: auto; bottom: 0; width: auto; transform: none;
+      display: flex; align-items: baseline; gap: var(--sc-3); overflow: hidden;
+      padding: .5em var(--sc-gutter); border-left: 0; border-top: 1px solid var(--rule);
+      background: color-mix(in oklab, var(--paper-2) 92%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .ledger ol { display: flex; gap: var(--sc-3); flex: 1 1 auto; overflow: hidden; }
+    .ledger li { grid-template-columns: .9rem auto; white-space: nowrap; }
+    .ledger .lg-st { display: none; }
+    .ledger__stat { margin: 0 0 0 auto; padding: 0; border: 0; white-space: nowrap; }
+  }
+
+  .masthead {
+    position: fixed; z-index: 20; inset: 0 0 auto 0;
+    display: flex; align-items: baseline; gap: var(--sc-3);
+    padding: var(--sc-3) var(--sc-gutter);
+    font-family: var(--sc-font-mono); font-size: var(--sc-t-xs);
+    letter-spacing: var(--sc-track-wide); text-transform: uppercase;
+    color: var(--sc-ink-soft);
+  }
+  .masthead b { color: var(--sc-ink); font-weight: 500; }
+  .masthead a { margin-left: auto; color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+
+  /* ── chapters: hard cuts between grounds, never an interpolation ────────────────────────── */
+  .chapter { padding: var(--sc-section) 0; }
+  .chapter--paper { background: var(--sc-canvas); }
+  .chapter--white { background: var(--paper-2); border-block: 1px solid var(--rule-soft); }
+  .sheet { width: 100%; max-width: 74rem; margin-inline: auto; padding-inline: var(--sc-gutter); }
+
+  .eyebrow {
+    font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); letter-spacing: var(--sc-track-wide);
+    text-transform: uppercase; color: var(--sc-ink-soft); margin: 0 0 var(--sc-4);
+  }
+  .eyebrow b { color: var(--sc-accent); font-weight: 500; }
+
+  h1, h2, h3 { font-family: var(--sc-font-display); font-weight: 500; letter-spacing: var(--sc-track-snug); }
+  .title {
+    font-size: var(--sc-t-3xl); line-height: var(--sc-leading-tight);
+    max-width: 17ch; margin: 0 0 var(--sc-5); text-wrap: balance;
+  }
+  .lede { max-width: 46ch; margin: 0; font-size: var(--sc-t-lg); line-height: 1.5; color: var(--sc-ink-soft); }
+  .lede b { color: var(--sc-ink); font-weight: 600; }
+  h2.ch { font-size: var(--sc-t-2xl); line-height: var(--sc-leading-tight); max-width: 16ch; margin: 0 0 var(--sc-4); }
+  h3 { font-size: var(--sc-t-lg); margin: 0 0 var(--sc-2); }
+  p.body { max-width: var(--sc-measure); margin: 0 0 var(--sc-4); font-size: var(--sc-t-base); line-height: var(--sc-leading-body); }
+  p.body b { font-weight: 600; }
+
+  .spread { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--sc-7); align-items: start; }
+  .spread--flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+
+  /* ── chapter I: the risks, set as a hanging list ────────────────────────────────────────── */
+  .risks { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+  .risks li { padding: var(--sc-4) 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); gap: var(--sc-3); align-items: baseline; }
+  .risks .mk { font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-accent); }
+  .risks strong { display: block; font-family: var(--sc-font-display); font-size: var(--sc-t-lg); font-weight: 500; margin-bottom: .25em; }
+  .risks span.g { color: var(--sc-ink-soft); font-size: var(--sc-t-sm); line-height: 1.55; }
+
+  /* ── chapter II: figures set as a printed table ─────────────────────────────────────────── */
+  .figures { display: grid; gap: var(--sc-5); margin: 0; border-top: 1px solid var(--rule); padding-top: var(--sc-5); }
+  .figures .n { display: block; font-family: var(--sc-font-display); font-size: var(--sc-t-3xl); line-height: 1; font-variant-numeric: tabular-nums; }
+  .figures .k { display: block; margin-top: var(--sc-2); color: var(--sc-ink-soft); font-size: var(--sc-t-sm); line-height: 1.5; max-width: 30ch; }
+  .practice { margin: var(--sc-5) 0 0; padding: 0; list-style: none; columns: 2; column-gap: var(--sc-6); }
+  .practice li { break-inside: avoid; padding: .45em 0; border-bottom: 1px solid var(--rule-soft); font-size: var(--sc-t-sm); }
+  .practice li b { font-weight: 600; }
+
+  /* ── chapter III: the board ─────────────────────────────────────────────────────────────── */
+  .board-stage { display: grid; align-content: center; width: 100%; height: 100%; padding: calc(var(--sc-7) + 1rem) var(--sc-gutter) var(--sc-6); margin: 0; }
+  .board {
+    width: 100%; max-width: 74rem; margin-inline: auto;
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--sc-r-sm);
+    box-shadow: var(--sc-e2); overflow: hidden;
+  }
+  .board__head { display: flex; align-items: baseline; gap: var(--sc-3); flex-wrap: wrap; padding: var(--sc-3) var(--sc-4); border-bottom: 1px solid var(--rule); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); letter-spacing: var(--sc-track-wide); text-transform: uppercase; color: var(--sc-ink-soft); }
+  .board__head b { color: var(--sc-ink); font-weight: 500; }
+  .board__clock { margin-left: auto; color: var(--sc-accent); }
+  .board__cycle { height: 2px; background: var(--rule-soft); }
+  .board__cycle span { display: block; height: 100%; width: 0; background: var(--sc-accent); }
+  .board__row {
+    display: grid; grid-template-columns: minmax(7rem, 1.3fr) 4.5rem 7.5rem minmax(0, 2fr);
+    align-items: center; gap: var(--sc-3);
+    padding: .62em var(--sc-4); border-bottom: 1px solid var(--rule-soft);
+    font-size: var(--sc-t-sm);
+  }
+  .board__row:last-child { border-bottom: 0; }
+  .board__row.is-raised { background: color-mix(in oklab, var(--watch) 7%, transparent); box-shadow: inset 3px 0 0 var(--watch); }
+  .board__area { font-weight: 600; }
+  .board__checks { font-family: var(--sc-font-mono); font-variant-numeric: tabular-nums; color: var(--sc-ink-soft); font-size: var(--sc-t-xs); }
+  .board__note { font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { display: inline-flex; align-items: center; gap: .45em; font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+  .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
+  .tag--ok { color: var(--ok); }
+  .tag--watch { color: var(--watch); }
+  .tag--issue { color: var(--issue); }
+  .board__foot { display: flex; flex-wrap: wrap; gap: var(--sc-4); padding: var(--sc-3) var(--sc-4); border-top: 1px solid var(--rule); background: var(--sc-canvas); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
+  .board__foot b { color: var(--sc-ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+  figcaption.cap { max-width: 74rem; margin: var(--sc-3) auto 0; font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.55; color: var(--sc-ink-soft); }
+
+  /* ── chapter IV: media in its own column, with a caption. Never under the type. ─────────── */
+  figure.plate { margin: 0; }
+  figure.plate canvas { display: block; width: 100%; height: 27rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--sc-r-sm); }
+  figure.plate figcaption { margin-top: var(--sc-2); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.55; color: var(--sc-ink-soft); }
+  .evidence { margin: var(--sc-5) 0 0; padding: 0; list-style: none; }
+  .evidence li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: var(--sc-3); padding: .55em 0; border-top: 1px solid var(--rule-soft); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
+  .evidence b { color: var(--sc-ink); font-weight: 500; }
+
+  /* ── the colophon: the CTA is a line of running text, not a button island ───────────────── */
+  .colophon { border-top: 2px solid var(--sc-ink); padding-top: var(--sc-5); padding-bottom: var(--sc-6); }
+  .colophon p.say { max-width: 34ch; margin: 0 0 var(--sc-5); font-family: var(--sc-font-display); font-size: var(--sc-t-xl); line-height: var(--sc-leading-tight); }
+  .colophon a { color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+  .colophon a:focus-visible, .masthead a:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 3px; }
+  .imprint { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--sc-4); margin-top: var(--sc-6); padding-top: var(--sc-4); border-top: 1px solid var(--rule); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.6; color: var(--sc-ink-soft); }
+
+  @media (max-width: 900px) {
+    .spread, .spread--flip { grid-template-columns: minmax(0, 1fr); gap: var(--sc-5); }
+    .practice { columns: 1; }
+    .board__row { grid-template-columns: minmax(0, 1fr) 3.5rem 6.5rem; }
+    .board__note { grid-column: 1 / -1; white-space: normal; }
+    .title { font-size: var(--sc-t-2xl); }
+    h2.ch { font-size: var(--sc-t-xl); }
+    figure.plate canvas { height: 16rem; }
+  }
+</style>
+</head>
+<body>
+
+<span data-sc-progress></span>
+
+<div class="masthead">
+  <b>Atlas AI Consulting</b> <span>Workday practice</span>
+  <a href="#engage">Book a working session</a>
+</div>
+
+<aside class="ledger" id="ledger" aria-label="Audit trail of this page">
+  <span class="ledger__h">Audit trail</span>
+  <ol id="ledgerRows"></ol>
+  <span class="ledger__stat" id="ledgerStat">nothing recorded yet</span>
+</aside>
+
+<main id="top">
+
+  <!-- TITLE PAGE · flow. Type on paper, no media above the fold: the grammar requires it, and it
+       is also the right first impression for a reader being briefed rather than sold to. -->
+  <section class="chapter chapter--paper" data-sc-act="flow" data-ch="" data-title="Atlas AI Consulting">
+    <div class="sheet" data-sc-in data-sc-stagger="90">
+      <p class="eyebrow">Workday consulting practice</p>
+      <h1 class="title">The whole of Workday, run by people who have done it before.</h1>
+      <p class="lede">Atlas AI Consulting is a <b>full scope Workday practice</b>. Core HCM, Payroll, Benefits, Absence, Time, Recruiting, Compensation and Financials, delivered by senior consultants using tooling we built ourselves. On time, to budget, and with an audit line behind every change.</p>
+    </div>
+  </section>
+
+  <!-- I · reveal at the chapter boundary -->
+  <section class="chapter chapter--white" data-sc-act="flow" data-ch="I" data-title="What actually goes wrong">
+    <div class="sheet">
+      <div class="spread">
+        <div data-sc-in data-sc-stagger="70">
+          <p class="eyebrow"><b>Chapter I</b></p>
+          <h2 class="ch">Nobody escalates a Workday problem until it has reached a person.</h2>
+          <p class="body">By the time a functional area is on your agenda, an employee has usually felt it first. That is not a tooling failure. It is what happens when nothing is watching between releases.</p>
+        </div>
+        <ul class="risks" data-sc-reveal="up" data-sc-reveal-at="0.04 0.42">
+          <li><span class="mk">01</span><span><strong>Payroll is right until the one period it is not.</strong><span class="g">A configuration change three weeks earlier lands on a single pay group, and the first report of it is a person who was paid wrong.</span></span></li>
+          <li><span class="mk">02</span><span><strong>Open enrolment slips on a file nobody owned.</strong><span class="g">A carrier changes a format, the integration keeps reporting success, and the elections quietly stop arriving.</span></span></li>
+          <li><span class="mk">03</span><span><strong>An auditor asks who approved something in March.</strong><span class="g">The answer exists somewhere between a ticket, a chat thread, and somebody's memory of a call.</span></span></li>
+          <li><span class="mk">04</span><span><strong>A release lands on a Saturday.</strong><span class="g">Two functional areas are affected. You find out which on Monday, from the people using them.</span></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- II · flow + count -->
+  <section class="chapter chapter--paper" data-sc-act="flow" data-ch="II" data-title="Who does the work">
+    <div class="sheet">
+      <div class="spread spread--flip">
+        <div data-sc-in data-sc-stagger="70">
+          <p class="eyebrow"><b>Chapter II</b></p>
+          <h2 class="ch">Senior consultants, carrying instruments most practices do not have.</h2>
+          <p class="body">Every engagement is staffed by consultants who have run these areas in production, not by a pyramid of juniors learning on your tenant. What is different is what they carry: a toolkit built over years of this work, which does the checking a person should not be doing by hand.</p>
+          <p class="body">That is where the AI sits. Not writing your configuration, and not making decisions. It reads what is already in the tenant, drafts what a consultant would otherwise assemble by hand, and flags what does not reconcile. <b>A consultant still signs it.</b></p>
+          <ul class="practice">
+            <li><b>Core HCM</b> and organisation design</li>
+            <li><b>Payroll</b> and its downstream files</li>
+            <li><b>Benefits</b> and annual enrolment</li>
+            <li><b>Absence</b> and leave</li>
+            <li><b>Time Tracking</b> and scheduling</li>
+            <li><b>Recruiting</b> and onboarding</li>
+            <li><b>Compensation</b> and merit cycles</li>
+            <li><b>Financials</b> at the HCM boundary</li>
+            <li><b>Reporting</b>, dashboards and prompts</li>
+            <li><b>Integrations</b>, inbound and outbound</li>
+            <li><b>Security</b> and domain review</li>
+            <li><b>Release readiness</b>, twice a year</li>
+          </ul>
+        </div>
+        <div class="figures">
+          <div><span class="n" data-sc-count="0 228" data-sc-count-at="0.1 0.55">0</span><span class="k">purpose built tools in the practice toolkit, from release regression to benefit conversions</span></div>
+          <div><span class="n" data-sc-count="0 11555" data-sc-count-at="0.14 0.6">0</span><span class="k">automated checks that pass before any of it is used on a client tenant</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- III · THE PEAK · pin. A pinned act whose content is a BOARD advancing state, not type
+       crossfading: the grammar bans the latter, and it is the latter that makes a chaptered page
+       read as a filmic one. The board is still, and green, for the first stretch. That silence is
+       authored: the first amber has to be a change from something. -->
+  <section class="chapter chapter--white" data-sc-act="pin" data-sc-span="4.6" data-sc-dwell="0.36" data-ch="III" data-title="The board">
+    <div data-sc-stage>
+      <figure class="board-stage">
+        <div class="board">
+          <div class="board__head">
+            <b>Functional area board</b> <span id="boardPhase">monitoring</span>
+            <span class="board__clock" id="boardClock">week 0</span>
+          </div>
+          <div class="board__cycle" aria-hidden="true"><span id="boardCycle"></span></div>
+          <div id="boardRows"></div>
+          <div class="board__foot">
+            <span>areas watched <b id="statAreas">0</b></span>
+            <span>checks this cycle <b id="statChecks">0</b></span>
+            <span>caught before anyone reported it <b id="statCaught">0</b></span>
+            <span>open at close <b id="statOpen">0</b></span>
+          </div>
+        </div>
+        <figcaption class="cap">Chapter III. One release cycle as it is actually worked: the board holds, the release lands, two areas raise, and each is closed with its evidence attached. A representative cycle, and every figure on it is counted from the rows above.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- IV · parallax in the media column. The Atlas map appears here, as a figure, once. -->
+  <section class="chapter chapter--paper" data-sc-act="flow" data-ch="IV" data-title="How we know">
+    <div class="sheet">
+      <div class="spread">
+        <div data-sc-in data-sc-stagger="70">
+          <p class="eyebrow"><b>Chapter IV</b></p>
+          <h2 class="ch">The board is only as good as what sits underneath it.</h2>
+          <p class="body">Before anything is watched, it is mapped. A read only harvest builds a picture of how your tenant is actually wired: which integrations feed which reports, which security domains govern which processes, and what a change to any one of them would touch.</p>
+          <p class="body">That map is why an amber on the board can name a cause rather than a symptom, and why a question about last March has an answer with a date on it.</p>
+          <ul class="evidence">
+            <li><b>Harvest</b><span>read only. Nothing is written to your tenant to build the picture.</span></li>
+            <li><b>Evidence</b><span>every dependency is marked verified or inferred, and says which.</span></li>
+            <li><b>Change</b><span>simulated first. Nothing reaches production unsimulated.</span></li>
+            <li><b>Record</b><span>who, what, when, and the check that passed, kept as it happens.</span></li>
+          </ul>
+        </div>
+        <figure class="plate" data-sc-parallax="0.3">
+          <canvas id="mapFigure" aria-hidden="true"></canvas>
+          <figcaption>Fig. 1. The Atlas map. Communities take their colour from their position in the estate, and a particle moves along a dependency only where runtime evidence exists for it, so the parts that move are the parts that were proven. Synthetic instance: a client's map is client data and stays in their tenant.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- COLOPHON · the CTA is a line of running text, not a button island -->
+  <section class="chapter chapter--white" data-sc-act="flow" id="engage" data-ch="" data-title="Engage">
+    <div class="sheet colophon" data-sc-in data-sc-stagger="80">
+      <p class="say">Bring us the functional area you are least sure about. We will tell you what we find, and what it would take to hold it.</p>
+      <p class="body">A working session is one conversation about one area with a senior consultant who has run it before. There is no deck. Write to <a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a> and say which area it is.</p>
+      <div class="imprint">
+        <span><b>Atlas AI Consulting</b><br>Workday consulting practice</span>
+        <span><a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a></span>
+        <span>Workday is a trademark of Workday, Inc. We are not affiliated with, sponsored by, or endorsed by Workday.</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="scrollcraft.js"></script>
+<script src="site.js"></script>
+<script>ScrollCraft.mount(document.body);</script>
+</body>
+</html>
