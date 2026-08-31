@@ -399,9 +399,11 @@
         : 'representative cycle';
       noteEl.style.color = live.length ? 'rgb(' + WARN + ')' : brk.length ? 'rgb(' + WARN + ')' : '';
     }
-    if (estateEl) {
-      estateEl.setAttribute('data-sc-verify-state', [wk, shown, openNow, working, fixed].join('|'));
-    }
+    // No data-sc-verify-state any more. It existed so the harness could see a PINNED, scroll
+    // driven board whose repaints were invisible to it. The cycle runs on a clock now and the act
+    // is not pinned, so the declaration describes nothing, and publishing it opted every flow act
+    // on the page into a dead-scroll check that ordinary prose is rightly exempt from.
+    if (estateEl) estateEl.setAttribute('data-cycle', [wk, shown, openNow, working, fixed].join('|'));
   }
 
   /* The week ruler. "More obvious week to week" is really a request for an axis: without one, a
