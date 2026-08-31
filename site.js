@@ -184,7 +184,25 @@
   var estateEl = document.getElementById('estate');
   var ecv = document.getElementById('estateCanvas');
   var ectx = ecv ? ecv.getContext('2d') : null;
-  var boardAct = estateEl ? estateEl.closest('[data-sc-act="pin"]') : null;
+  /* The cycle runs on its own clock. Driving it from scroll made it a scrubber: it only advanced
+     while someone was moving, and stopped dead the moment they read something. A release cycle
+     does not wait for the reader.
+
+     It starts when the diagram is first seen rather than on page load, so nobody arrives at week
+     nine, and it pauses when the diagram is off screen, which costs nothing and means the next
+     look starts from the beginning. */
+  var CYCLE_SECONDS = 26, CYCLE_HOLD = 3.5;
+  var cycleT0 = null, cycleVisible = false, cycleP = 0;
+
+  function advance(now) {
+    if (!cycleVisible) return cycleP;
+    if (cycleT0 === null) cycleT0 = now;
+    var el = (now - cycleT0) / 1000;
+    var span = CYCLE_SECONDS + CYCLE_HOLD;
+    var phase = el % span;
+    cycleP = phase >= CYCLE_SECONDS ? 1 : phase / CYCLE_SECONDS;   // run, then hold on the close
+    return cycleP;
+  }
   var phaseEl = document.getElementById('boardPhase');
   var clockEl = document.getElementById('boardClock');
   var sAreas = document.getElementById('statAreas');
@@ -432,8 +450,7 @@
   var queued = false;
   function frame(now) {
     queued = false;
-    var raw = boardAct ? parseFloat(boardAct.style.getPropertyValue('--sc-p')) : 0;
-    paintEstate(isNaN(raw) ? 0 : raw, now || 0);
+    paintEstate(advance(now || 0), now || 0);
     tick();
   }
   function tick() { if (queued) return; queued = true; requestAnimationFrame(frame); }
@@ -445,6 +462,18 @@
 
   if (window.ResizeObserver && estateEl) new ResizeObserver(sizeEstate).observe(estateEl);
   else window.addEventListener('resize', sizeEstate);
+
+  if (estateEl && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (rows) {
+      rows.forEach(function (r) {
+        cycleVisible = r.isIntersecting;
+        if (!r.isIntersecting) cycleT0 = null;      // next look starts at week 0
+      });
+    }, { rootMargin: '80px', threshold: 0.15 }).observe(estateEl);
+  } else { cycleVisible = true; }
+
+  // Reduced motion gets the resolved cycle, held: the story is still told, nothing loops.
+  if (reduce) { cycleVisible = false; cycleP = 1; }
 
   if (reduce) { CYCLE.HOLD = 0.02; CYCLE.RUN = 0.06; }
 })();
