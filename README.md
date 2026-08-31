@@ -7,6 +7,7 @@ The Atlas AI Consulting website. A static page: four files, no build step, no fr
     site.js           the audit trail, the live functional area estate, and the control data plate
     scrollcraft.js    scroll engine (vendored)
     scrollcraft.css   scroll engine stylesheet (vendored)
+    brand/            the mark, for signatures and anywhere else it is needed
 
 Published with GitHub Pages from the default branch. A push redeploys.
 
@@ -19,3 +20,13 @@ The survey terrain is a real quantity. Station heights are the check counts the 
 each functional area, which is why the legend can say "contour interval 70 checks" and why the
 two summits land on Payroll and Benefits. If the field ever stops being derived from real counts,
 the legend must lose its unit. A page that invents a unit makes every other number on it suspect.
+
+## Brand assets
+
+    brand/logo.png       1200x180  horizontal lockup, for email signatures
+    brand/logo-mark.png   528x256  the mark alone
+    brand/logo.svg                 the same lockup, for print and web
+    brand/logo-mark.svg            the mark alone
+
+Use the PNG in email. Outlook does not render SVG reliably, and a signature that
+fails in Outlook fails for most of the people who will see it.

@@ -1,0 +1,15 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 60' width='400' height='60'><style>.mark-solid{fill:#16191A}.mark-flow{stroke:#0E7490;stroke-width:3.4;fill:none;stroke-linecap:round}.mark-node{fill:#B8431E}</style><g transform='translate(6,7) scale(0.8214)'>
+    <g class="mark-solid">
+      <path d="M4 17 25 7l21 10-21 10z"/><path d="M4 24 25 34l21-10v5L25 39 4 29z"/>
+      <path d="M4 33 25 43l21-10v5L25 48 4 38z"/>
+    </g>
+    <g class="mark-flow" fill="none" stroke-linecap="round">
+      <path d="M48 32c9 0 11-8 20-10s10 3 16 1"/>
+      <path d="M48 38c10 0 12-7 21-9s10 4 15 2"/>
+    </g>
+    <circle class="mark-node" cx="70" cy="29" r="4.6"/>
+    <g class="mark-solid">
+      <path d="M100 3 121 13l-21 10-21-10z"/><path d="M79 16 100 26v22L79 38z"/>
+      <path d="M121 16 100 26v22l21-10z" opacity=".82"/>
+    </g>
+  </g><text x='128' y='34' font-family='IBM Plex Mono, ui-monospace, monospace' font-size='16' font-weight='600' letter-spacing='2.4' fill='#16191A'>ATLAS AI CONSULTING</text><text x='130' y='51' font-family='IBM Plex Mono, ui-monospace, monospace' font-size='10.5' letter-spacing='2.1' fill='#5B6360'>WORKDAY PRACTICE</text></svg>
