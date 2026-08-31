@@ -110,111 +110,195 @@
     });
   })();
 
-  /* ══ 2 · THE BOARD ══════════════════════════════════════════════════════════════════════════ */
+  /* ══ 2 · THE ESTATE, RUNNING (the peak) ════════════════════════════════════════════════════
+     Named functional areas, the real flows between them, and traffic that never stops. The
+     animation is NOT scroll-driven: payroll does not stop running because a reader stopped
+     scrolling. Scroll drives the release cycle over the top of it, which is a different clock. */
 
-  var AREAS = [
-    { name: 'Core HCM',      checks: 412 },
-    { name: 'Payroll',       checks: 1180, raise: {
-        at: 0.42, cause: 'pay component maps to retired earning', close: 0.70, ledger: 'r1' } },
-    { name: 'Benefits',      checks: 864, raise: {
-        at: 0.52, cause: 'carrier file width changed at source', close: 0.82, ledger: 'r2' } },
-    { name: 'Absence',       checks: 507 },
-    { name: 'Time Tracking', checks: 638 },
-    { name: 'Recruiting',    checks: 344 },
-    { name: 'Compensation',  checks: 421 },
-    { name: 'Financials',    checks: 289 }
+  var AREAS = {
+    recruiting: { checks: 344, label: 'Recruiting' },
+    time:       { checks: 638, label: 'Time Tracking' },
+    absence:    { checks: 507, label: 'Absence' },
+    hcm:        { checks: 412, label: 'Core HCM' },
+    comp:       { checks: 421, label: 'Compensation' },
+    benefits:   { checks: 864, label: 'Benefits' },
+    payroll:    { checks: 1180, label: 'Payroll' },
+    carrier:    { checks: 96,  label: 'Carrier files', out: true },
+    bank:       { checks: 74,  label: 'Bank & tax',    out: true },
+    gl:         { checks: 118, label: 'General ledger', out: true }
+  };
+
+  // What actually moves between them in a Workday estate. Weight is how much traffic a link
+  // carries, which is what sets particle density: a reader should be able to see that Core HCM
+  // into Payroll is a busier road than Recruiting into Core HCM.
+  var LINKS = [
+    { a: 'recruiting', b: 'hcm',      w: 0.5, what: 'new hires' },
+    { a: 'hcm',        b: 'payroll',  w: 1.0, what: 'worker data' },
+    { a: 'hcm',        b: 'benefits', w: 0.7, what: 'eligibility' },
+    { a: 'hcm',        b: 'comp',     w: 0.5, what: 'job and grade' },
+    { a: 'time',       b: 'payroll',  w: 0.9, what: 'hours' },
+    { a: 'absence',    b: 'payroll',  w: 0.6, what: 'leave' },
+    { a: 'comp',       b: 'payroll',  w: 0.6, what: 'pay rates' },
+    { a: 'benefits',   b: 'payroll',  w: 0.7, what: 'deductions' },
+    { a: 'benefits',   b: 'carrier',  w: 0.6, what: 'elections' },
+    { a: 'payroll',    b: 'bank',     w: 0.8, what: 'payments' },
+    { a: 'payroll',    b: 'gl',       w: 0.6, what: 'postings' }
   ];
 
-  var boardAct = document.querySelector('[data-sc-act="pin"]');
-  var rowsEl = document.getElementById('boardRows');
+  // The two failures from chapter I, made visible on the thing they actually break.
+  var RAISES = [
+    { area: 'payroll',  link: 'payroll>bank',     at: 0.40, close: 0.70,
+      cause: 'pay component maps to a retired earning', ledger: 'r1', week: 8 },
+    { area: 'benefits', link: 'benefits>carrier', at: 0.52, close: 0.82,
+      cause: 'carrier changed the file width at source', ledger: 'r2', week: 10 }
+  ];
+
+  var estateEl = document.getElementById('estate');
+  var eCanvas = document.getElementById('estateCanvas');
+  var ectx = eCanvas ? eCanvas.getContext('2d') : null;
   var phaseEl = document.getElementById('boardPhase');
   var clockEl = document.getElementById('boardClock');
   var sAreas = document.getElementById('statAreas');
   var sChecks = document.getElementById('statChecks');
   var sCaught = document.getElementById('statCaught');
-  var sOpen = document.getElementById('statOpen');
-  var cycleEl = document.getElementById('boardCycle');
-  var boardEl = document.querySelector('.board');
+  var noteEl = document.getElementById('estateNote');
+  var boardAct = estateEl ? estateEl.closest('[data-sc-act="pin"]') : null;
 
-  // The board holds still and green through the opening stretch. That silence is authored: the
-  // first amber has to be a change from something, and a board that starts alarmed is a dashboard
-  // screenshot, not a cycle.
-  var HOLD = 0.20, RELEASE = 0.30, SETTLE = 0.90;
-
-  if (rowsEl) {
-    rowsEl.innerHTML = AREAS.map(function (a, i) {
-      return '<div class="board__row" data-i="' + i + '">' +
-        '<span class="board__area">' + a.name + '</span>' +
-        '<span class="board__checks" data-checks>0</span>' +
-        '<span class="tag tag--ok" data-tag>holding</span>' +
-        '<span class="board__note" data-note></span></div>';
-    }).join('');
+  var ndEls = {}, pts = {};
+  if (estateEl) {
+    [].forEach.call(estateEl.querySelectorAll('.nd'), function (el) {
+      ndEls[el.getAttribute('data-k')] = el;
+    });
   }
 
-  var rowEls = rowsEl ? [].slice.call(rowsEl.children) : [];
-
-  function week(p) {
-    // A twelve week cycle, so the clock is a number an executive recognises rather than a percentage.
-    return Math.max(0, Math.min(12, Math.round(p * 12)));
+  var eW = 0, eH = 0, eDpr = 1;
+  function sizeEstate() {
+    if (!ectx || !estateEl) return;
+    var box = estateEl.getBoundingClientRect();
+    eDpr = Math.min(window.devicePixelRatio || 1, 2);
+    eW = Math.max(1, Math.round(box.width));
+    eH = Math.max(1, Math.round(box.height));
+    eCanvas.width = Math.round(eW * eDpr);
+    eCanvas.height = Math.round(eH * eDpr);
+    ectx.setTransform(eDpr, 0, 0, eDpr, 0, 0);
+    // Positions come from the laid-out DOM, so the lines can never disagree with the labels.
+    Object.keys(ndEls).forEach(function (k) {
+      var r = ndEls[k].getBoundingClientRect();
+      pts[k] = { x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height / 2,
+                 w: r.width, h: r.height };
+    });
   }
 
-  function paintBoard(p) {
-    if (!rowEls.length) return;
-    var wk = week(p);
-    var running = p > RELEASE;
-    var caught = 0, open = 0, checksShown = 0;
-
-    AREAS.forEach(function (a, i) {
-      var row = rowEls[i];
-      var ratio = running ? Math.min(1, (p - RELEASE) / 0.56) : (p > HOLD ? 0.04 : 0);
-      var n = Math.round(a.checks * ratio);
-      checksShown += n;
-      row.querySelector('[data-checks]').textContent = n ? n.toLocaleString('en-US') : '—';
-
-      var tag = row.querySelector('[data-tag]');
-      var note = row.querySelector('[data-note]');
-      var r = a.raise;
-      var state = 'ok', word = running ? 'passing' : 'holding', text = '';
-
-      if (r && p >= r.at && p < r.close) {
-        state = 'watch'; word = 'raised'; text = r.cause; open++;
-      } else if (r && p >= r.close) {
-        state = 'ok'; word = 'closed';
-        text = 'fixed and evidenced · week ' + Math.round(r.close * 12);
-        caught++;
-        ledgerClose(r.ledger, 'week ' + Math.round(r.close * 12));
-      } else if (running) {
-        text = a.checks.toLocaleString('en-US') + ' checks, no change in behaviour';
+  // Particles are laid out once per link and simply advance; density follows the link's weight.
+  var PARTS = [];
+  (function seed() {
+    var r = rng(90210);
+    LINKS.forEach(function (l) {
+      l.id = l.a + '>' + l.b;
+      var n = Math.round(4 + l.w * 9);
+      for (var i = 0; i < n; i++) {
+        PARTS.push({ l: l, u: r(), v: (0.055 + r() * 0.05) * (0.6 + l.w * 0.6) });
       }
+    });
+  })();
 
-      tag.className = 'tag tag--' + (state === 'watch' ? 'watch' : 'ok');
-      tag.textContent = word;
-      note.textContent = text;
-      row.classList.toggle('is-raised', state === 'watch');
+  // A node's edge, so a line stops at the card rather than running under the label.
+  function edgePoint(from, to) {
+    var dx = to.x - from.x, dy = to.y - from.y;
+    var m = Math.max(Math.abs(dx) / (from.w / 2 + 9), Math.abs(dy) / (from.h / 2 + 7)) || 1;
+    return { x: from.x + dx / m, y: from.y + dy / m };
+  }
+
+  var CYCLE = { HOLD: 0.18, RUN: 0.28, CLOSE: 0.90 };
+
+  function paintEstate(p, t) {
+    if (!ectx || !eW) return;
+    var secs = t / 1000;
+    var running = p > CYCLE.RUN;
+    var caught = 0, checksShown = 0;
+
+    // which links are stalled, and which areas are raised
+    var stalled = {}, raised = {};
+    RAISES.forEach(function (r) {
+      if (p >= r.at && p < r.close) { stalled[r.link] = true; raised[r.area] = r; }
+      else if (p >= r.close) { caught++; ledgerClose(r.ledger, 'week ' + r.week); }
+    });
+    if (p >= CYCLE.CLOSE) ledgerClose('r4', 'week 12');
+
+    ectx.clearRect(0, 0, eW, eH);
+
+    LINKS.forEach(function (l) {
+      var A = pts[l.a], B = pts[l.b];
+      if (!A || !B) return;
+      var a = edgePoint(A, B), b = edgePoint(B, A);
+      var bad = stalled[l.id];
+      ectx.save();
+      ectx.strokeStyle = bad ? '#A0620A' : 'rgba(22,25,26,.22)';
+      ectx.lineWidth = bad ? 1.4 : 0.6 + l.w * 0.9;
+      if (bad) ectx.setLineDash([4, 4]);
+      ectx.beginPath(); ectx.moveTo(a.x, a.y); ectx.lineTo(b.x, b.y); ectx.stroke();
+      ectx.restore();
+      l._a = a; l._b = b;
+
+      // What moves, written on the line that moves it. Without this the diagram is pretty and
+      // mute: an executive can see that Time Tracking reaches Payroll but not that it is hours.
+      var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      var ang = Math.atan2(b.y - a.y, b.x - a.x);
+      if (Math.abs(ang) > Math.PI / 2) ang += Math.PI;          // never set text upside down
+      ectx.save();
+      ectx.translate(mx, my);
+      ectx.rotate(ang);
+      ectx.font = '9px "IBM Plex Mono", ui-monospace, monospace';
+      ectx.textAlign = 'center';
+      ectx.fillStyle = bad ? '#A0620A' : 'rgba(22,25,26,.45)';
+      ectx.fillText(bad ? 'stopped' : l.what, 0, -4);
+      ectx.restore();
+    });
+
+    if (!reduce) {
+      PARTS.forEach(function (q) {
+        var l = q.l;
+        if (!l._a || stalled[l.id]) return;          // a stalled flow is a flow that STOPPED
+        var u = (q.u + secs * q.v) % 1;
+        var x = l._a.x + (l._b.x - l._a.x) * u, y = l._a.y + (l._b.y - l._a.y) * u;
+        ectx.save();
+        ectx.fillStyle = 'rgba(184,67,30,.85)';
+        ectx.beginPath(); ectx.arc(x, y, 1.9, 0, Math.PI * 2); ectx.fill();
+        ectx.restore();
+      });
+    }
+
+    Object.keys(AREAS).forEach(function (k) {
+      var el = ndEls[k], a = AREAS[k];
+      if (!el) return;
+      var r = raised[k];
+      var done = RAISES.some(function (x) { return x.area === k && p >= x.close; });
+      el.classList.toggle('is-raised', !!r);
+      el.classList.toggle('is-fixed', done && p < CYCLE.CLOSE + 0.08);
+      var n = running ? Math.round(a.checks * Math.min(1, (p - CYCLE.RUN) / 0.5)) : 0;
+      checksShown += n;
+      var i = el.querySelector('[data-c]');
+      if (i) i.textContent = r ? r.cause : (n ? n.toLocaleString('en-US') + ' checks' : 'holding');
     });
 
     if (phaseEl) {
-      if (p >= SETTLE) ledgerClose('r4', 'week 12');
-      phaseEl.textContent = p < HOLD ? 'monitoring'
-        : p < RELEASE ? 'release inbound'
-        : p < SETTLE ? 'release week, checks running'
-        : 'cycle closed';
+      phaseEl.textContent = p < CYCLE.HOLD ? 'monitoring'
+        : p < CYCLE.RUN ? 'release inbound'
+        : p < CYCLE.CLOSE ? 'release week, checks running' : 'cycle closed';
     }
-    if (clockEl) clockEl.textContent = 'week ' + wk;
-    // A continuously moving element. Everything else on the board changes in steps, and three
-    // consecutive sampled frames came back identical because of it.
-    if (cycleEl) cycleEl.style.width = (p * 100).toFixed(2) + '%';
-    // The harness samples engine devices and one declared slot; a board that repaints its own DOM
-    // is invisible to it, which is why three sampled frames came back identical and were reported
-    // as dead scroll. This publishes what is actually on the board, so the check can see it.
-    if (boardEl) {
-      boardEl.setAttribute('data-sc-verify-state',
-        [phaseEl ? phaseEl.textContent : '', wk, checksShown, open, caught].join('|'));
-    }
-    if (sAreas) sAreas.textContent = AREAS.length;
+    if (clockEl) clockEl.textContent = 'week ' + Math.max(0, Math.min(12, Math.round(p * 12)));
+    if (sAreas) sAreas.textContent = Object.keys(AREAS).length;
     if (sChecks) sChecks.textContent = checksShown.toLocaleString('en-US');
     if (sCaught) sCaught.textContent = caught;
-    if (sOpen) sOpen.textContent = open;
+    if (noteEl) {
+      noteEl.textContent = Object.keys(stalled).length
+        ? 'a stopped line is a flow that stopped'
+        : 'representative cycle';
+    }
+    if (estateEl) {
+      estateEl.setAttribute('data-sc-verify-state',
+        [phaseEl ? phaseEl.textContent : '', checksShown, Object.keys(stalled).length, caught].join('|'));
+    }
   }
 
   /* ══ 3 · FIG. 1 · the Atlas map ════════════════════════════════════════════════════════════
@@ -388,23 +472,24 @@
 
   /* ══ the loop ═══════════════════════════════════════════════════════════════════════════════ */
 
-  var lastP = -1, queued = false;
+  var queued = false;
   function frame(now) {
     queued = false;
+    var raw = boardAct ? parseFloat(boardAct.style.getPropertyValue('--sc-p')) : 0;
+    paintEstate(isNaN(raw) ? 0 : raw, now || 0);
     paintMap(now || 0);
-    if (boardAct) {
-      var raw = parseFloat(boardAct.style.getPropertyValue('--sc-p'));
-      var p = isNaN(raw) ? 0 : raw;
-      if (Math.abs(p - lastP) > 0.0009) { lastP = p; paintBoard(p); }
-    }
     tick();
   }
   function tick() { if (queued) return; queued = true; requestAnimationFrame(frame); }
 
-  paintBoard(0);
   ledgerRender();
+  sizeEstate();
   sizeMap();
+  paintEstate(0, 0);
   tick();
+
+  if (window.ResizeObserver && estateEl) new ResizeObserver(sizeEstate).observe(estateEl);
+  else window.addEventListener('resize', sizeEstate);
 
   if (window.ResizeObserver && mapCanvas) {
     new ResizeObserver(sizeMap).observe(mapCanvas);
@@ -414,5 +499,5 @@
 
   // Reduced motion keeps the meaning and drops the theatre: the cycle still advances with scroll,
   // it just does not hold anything back to make an entrance.
-  if (reduce) { HOLD = 0.02; RELEASE = 0.06; lastP = -1; }
+  if (reduce) { CYCLE.HOLD = 0.02; CYCLE.RUN = 0.06; }
 })();

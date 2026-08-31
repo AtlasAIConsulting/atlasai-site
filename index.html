@@ -55,12 +55,6 @@
   }
   .ledger.is-live { opacity: 1; }
   .ledger ol { max-height: 52vh; overflow: hidden; }
-  /* The CONTENT is offset to leave the margin the ledger lives in, the way a printed page with
-     marginalia does. Padding `main` instead pulled the chapter grounds off the left edge and left
-     a visible seam down the page, because a chapter's ground is meant to bleed. */
-  @media (min-width: 1321px) {
-    .sheet, .board-stage, .masthead { padding-left: calc(var(--sc-gutter) + 16rem); }
-  }
   .ledger__h { display: block; margin-bottom: var(--sc-2); letter-spacing: var(--sc-track-wide); text-transform: uppercase; color: var(--sc-ink); font-weight: 500; }
   .ledger ol { margin: 0; padding: 0; list-style: none; display: grid; gap: .3em; }
   .ledger li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: .4em; color: var(--sc-ink-soft); }
@@ -139,42 +133,45 @@
   .practice li { break-inside: avoid; padding: .45em 0; border-bottom: 1px solid var(--rule-soft); font-size: var(--sc-t-sm); }
   .practice li b { font-weight: 600; }
 
-  /* ── chapter III: the board ─────────────────────────────────────────────────────────────── */
-  .board-stage { display: grid; align-content: center; width: 100%; height: 100%; padding: calc(var(--sc-7) + 1rem) var(--sc-gutter) var(--sc-6); margin: 0; }
-  .board {
-    width: 100%; max-width: 74rem; margin-inline: auto;
-    background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--sc-r-sm);
-    box-shadow: var(--sc-e2); overflow: hidden;
+  /* ── chapter III: the estate, running ───────────────────────────────────────────────────── */
+  .estate-stage { display: grid; align-content: center; gap: var(--sc-4); width: 100%; height: 100%;
+                  max-width: 74rem; margin-inline: auto; padding: calc(var(--sc-7) + 1rem) var(--sc-gutter) var(--sc-5); }
+  .estate-head { display: grid; gap: var(--sc-2); }
+  .estate-clock { margin: 0; font-family: var(--sc-font-mono); font-size: var(--sc-t-xs);
+                  letter-spacing: var(--sc-track-wide); text-transform: uppercase; color: var(--sc-ink-soft); }
+  .estate-clock b { color: var(--sc-accent); font-weight: 500; }
+
+  .estate { position: relative; width: 100%; height: min(56vh, 30rem); }
+  #estateCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .nd {
+    position: absolute; transform: translate(-50%, -50%);
+    display: grid; gap: .15em; justify-items: center; text-align: center;
+    padding: .5em .8em; border: 1px solid var(--rule); border-radius: var(--sc-r-sm);
+    background: var(--paper-2); box-shadow: var(--sc-e1); white-space: nowrap;
+    transition: border-color .25s ease, box-shadow .25s ease, background .25s ease;
   }
-  .board__head { display: flex; align-items: baseline; gap: var(--sc-3); flex-wrap: wrap; padding: var(--sc-3) var(--sc-4); border-bottom: 1px solid var(--rule); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); letter-spacing: var(--sc-track-wide); text-transform: uppercase; color: var(--sc-ink-soft); }
-  .board__head b { color: var(--sc-ink); font-weight: 500; }
-  .board__clock { margin-left: auto; color: var(--sc-accent); }
-  .board__cycle { height: 2px; background: var(--rule-soft); }
-  .board__cycle span { display: block; height: 100%; width: 0; background: var(--sc-accent); }
-  .board__row {
-    display: grid; grid-template-columns: minmax(7rem, 1.3fr) 4.5rem 7.5rem minmax(0, 2fr);
-    align-items: center; gap: var(--sc-3);
-    padding: .62em var(--sc-4); border-bottom: 1px solid var(--rule-soft);
-    font-size: var(--sc-t-sm);
-  }
-  .board__row:last-child { border-bottom: 0; }
-  .board__row.is-raised { background: color-mix(in oklab, var(--watch) 7%, transparent); box-shadow: inset 3px 0 0 var(--watch); }
-  .board__area { font-weight: 600; }
-  .board__checks { font-family: var(--sc-font-mono); font-variant-numeric: tabular-nums; color: var(--sc-ink-soft); font-size: var(--sc-t-xs); }
-  .board__note { font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tag { display: inline-flex; align-items: center; gap: .45em; font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
-  .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
-  .tag--ok { color: var(--ok); }
-  .tag--watch { color: var(--watch); }
-  .tag--issue { color: var(--issue); }
-  .board__foot { display: flex; flex-wrap: wrap; gap: var(--sc-4); padding: var(--sc-3) var(--sc-4); border-top: 1px solid var(--rule); background: var(--sc-canvas); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
-  .board__foot b { color: var(--sc-ink); font-weight: 500; font-variant-numeric: tabular-nums; }
-  figcaption.cap { max-width: 74rem; margin: var(--sc-3) auto 0; font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.55; color: var(--sc-ink-soft); }
+  .nd b { font-size: var(--sc-t-sm); font-weight: 600; letter-spacing: -.01em; }
+  .nd i { font-family: var(--sc-font-mono); font-size: 9.5px; font-style: normal;
+          font-variant-numeric: tabular-nums; color: var(--sc-ink-soft); letter-spacing: .03em; }
+  .nd.is-hub { border-color: color-mix(in oklab, var(--sc-ink) 34%, transparent); box-shadow: var(--sc-e2); }
+  .nd.is-hub b { font-size: var(--sc-t-base); }
+  .nd.is-out { background: var(--sc-canvas); border-style: dashed; }
+  .nd.is-out b { font-weight: 400; color: var(--sc-ink-soft); }
+  .nd.is-raised { border-color: var(--watch); background: color-mix(in oklab, var(--watch) 9%, var(--paper-2)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--watch) 16%, transparent); }
+  .nd.is-raised i { color: var(--watch); }
+  .nd.is-fixed { border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 14%, transparent); }
+  .nd.is-fixed i { color: var(--ok); }
+
+  .estate-foot { display: flex; flex-wrap: wrap; gap: var(--sc-4); padding-top: var(--sc-3);
+                 border-top: 1px solid var(--rule); font-family: var(--sc-font-mono);
+                 font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
+  .estate-foot b { color: var(--sc-ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+  #estateNote { margin-left: auto; }
 
   /* ── chapter IV: media in its own column, with a caption. Never under the type. ─────────── */
-  figure.plate { margin: 0; }
-  figure.plate canvas { display: block; width: 100%; height: 27rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--sc-r-sm); }
-  figure.plate figcaption { margin-top: var(--sc-2); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.55; color: var(--sc-ink-soft); }
+  .plate canvas { display: block; width: 100%; height: 24rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--sc-r-sm); }
+  .plate__note { margin: var(--sc-3) 0 0; max-width: 46ch; font-size: var(--sc-t-sm); line-height: var(--sc-leading-body); color: var(--sc-ink-soft); }
   .evidence { margin: var(--sc-5) 0 0; padding: 0; list-style: none; }
   .evidence li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: var(--sc-3); padding: .55em 0; border-top: 1px solid var(--rule-soft); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
   .evidence b { color: var(--sc-ink); font-weight: 500; }
@@ -186,14 +183,25 @@
   .colophon a:focus-visible, .masthead a:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 3px; }
   .imprint { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--sc-4); margin-top: var(--sc-6); padding-top: var(--sc-4); border-top: 1px solid var(--rule); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.6; color: var(--sc-ink-soft); }
 
+  /* The CONTENT is offset to leave the margin the ledger lives in, the way a printed page with
+     marginalia does. This must come AFTER the rules it overrides: an equal-specificity media
+     query earlier in the stylesheet loses to a later `padding` shorthand, which is why the
+     ledger kept printing over the page. */
+  @media (min-width: 1321px) {
+    .sheet, .estate-stage, .plate, .masthead { padding-left: calc(var(--sc-gutter) + 15rem); }
+  }
+
   @media (max-width: 900px) {
     .spread, .spread--flip { grid-template-columns: minmax(0, 1fr); gap: var(--sc-5); }
     .practice { columns: 1; }
-    .board__row { grid-template-columns: minmax(0, 1fr) 3.5rem 6.5rem; }
-    .board__note { grid-column: 1 / -1; white-space: normal; }
+    .estate { height: min(62vh, 26rem); }
+    .nd { padding: .35em .5em; }
+    .nd b { font-size: 11px; }
+    .nd i { display: none; }
+    .nd.is-hub b { font-size: 12px; }
     .title { font-size: var(--sc-t-2xl); }
     h2.ch { font-size: var(--sc-t-xl); }
-    figure.plate canvas { height: 16rem; }
+    .plate canvas { height: 15rem; }
   }
 </style>
 </head>
@@ -275,29 +283,38 @@
     </div>
   </section>
 
-  <!-- III · THE PEAK · pin. A pinned act whose content is a BOARD advancing state, not type
-       crossfading: the grammar bans the latter, and it is the latter that makes a chaptered page
-       read as a filmic one. The board is still, and green, for the first stretch. That silence is
-       authored: the first amber has to be a change from something. -->
-  <section class="chapter chapter--white" data-sc-act="pin" data-sc-span="4.6" data-sc-dwell="0.36" data-ch="III" data-title="The board">
+  <!-- III · THE PEAK · pin. The estate, running. Named areas, real Workday flows between them,
+       and traffic that never stops moving. Scroll drives the release cycle over the top of it. -->
+  <section class="chapter chapter--white" data-sc-act="pin" data-sc-span="5" data-sc-dwell="0.34" data-ch="III" data-title="The estate, running">
     <div data-sc-stage>
-      <figure class="board-stage">
-        <div class="board">
-          <div class="board__head">
-            <b>Functional area board</b> <span id="boardPhase">monitoring</span>
-            <span class="board__clock" id="boardClock">week 0</span>
-          </div>
-          <div class="board__cycle" aria-hidden="true"><span id="boardCycle"></span></div>
-          <div id="boardRows"></div>
-          <div class="board__foot">
-            <span>areas watched <b id="statAreas">0</b></span>
-            <span>checks this cycle <b id="statChecks">0</b></span>
-            <span>caught before anyone reported it <b id="statCaught">0</b></span>
-            <span>open at close <b id="statOpen">0</b></span>
-          </div>
+      <div class="estate-stage">
+        <div class="estate-head">
+          <p class="eyebrow" style="margin:0"><b>Chapter III</b> · every functional area, and what moves between them</p>
+          <h2 class="ch" style="margin:0">Your estate does not sit still, so neither does the watching.</h2>
+          <p class="estate-clock"><span id="boardPhase">monitoring</span> · <b id="boardClock">week 0</b></p>
         </div>
-        <figcaption class="cap">Chapter III. One release cycle as it is actually worked: the board holds, the release lands, two areas raise, and each is closed with its evidence attached. A representative cycle, and every figure on it is counted from the rows above.</figcaption>
-      </figure>
+
+        <div class="estate" id="estate">
+          <canvas id="estateCanvas" aria-hidden="true"></canvas>
+          <div class="nd" data-k="recruiting"   style="left:9%;  top:16%"><b>Recruiting</b><i data-c></i></div>
+          <div class="nd" data-k="time"         style="left:9%;  top:50%"><b>Time Tracking</b><i data-c></i></div>
+          <div class="nd" data-k="absence"      style="left:9%;  top:84%"><b>Absence</b><i data-c></i></div>
+          <div class="nd is-hub" data-k="hcm"   style="left:33%; top:33%"><b>Core HCM</b><i data-c></i></div>
+          <div class="nd" data-k="comp"         style="left:33%; top:82%"><b>Compensation</b><i data-c></i></div>
+          <div class="nd" data-k="benefits"     style="left:58%; top:17%"><b>Benefits</b><i data-c></i></div>
+          <div class="nd is-hub" data-k="payroll" style="left:58%; top:58%"><b>Payroll</b><i data-c></i></div>
+          <div class="nd is-out" data-k="carrier" style="left:85%; top:22%"><b>Carrier files</b><i data-c></i></div>
+          <div class="nd is-out" data-k="bank"    style="left:85%; top:55%"><b>Bank &amp; tax</b><i data-c></i></div>
+          <div class="nd is-out" data-k="gl"      style="left:85%; top:86%"><b>General ledger</b><i data-c></i></div>
+        </div>
+
+        <div class="estate-foot">
+          <span>areas watched <b id="statAreas">0</b></span>
+          <span>checks this cycle <b id="statChecks">0</b></span>
+          <span>caught before anyone reported it <b id="statCaught">0</b></span>
+          <span id="estateNote">representative cycle</span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -317,10 +334,10 @@
             <li><b>Record</b><span>who, what, when, and the check that passed, kept as it happens.</span></li>
           </ul>
         </div>
-        <figure class="plate" data-sc-parallax="0.3">
+        <div class="plate" data-sc-parallax="0.25">
           <canvas id="mapFigure" aria-hidden="true"></canvas>
-          <figcaption>Fig. 1. The Atlas map. Communities take their colour from their position in the estate, and a particle moves along a dependency only where runtime evidence exists for it, so the parts that move are the parts that were proven. Synthetic instance: a client's map is client data and stays in their tenant.</figcaption>
-        </figure>
+          <p class="plate__note">The same estate, one level down: every object and every dependency between them. This is what the areas above are actually made of, and what tells you a change to one of them reaches the others.</p>
+        </div>
       </div>
     </div>
   </section>
