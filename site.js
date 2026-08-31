@@ -332,18 +332,19 @@
     }
   }
 
-  /* ══ 3 · THE MAP, FULL BLEED ════════════════════════════════════════════════════════════════
-     The estate one level down, drawn at the size it deserves. Previously this was squeezed into a
-     narrow column beside the copy, where a graph of a thousand objects has nowhere to be a graph.
+  /* ══ 3 · THE DEPENDENCY CANOPY ══════════════════════════════════════════════════════════════
+     One dark chapter in a paper document. The page stays light because an executive is reading it;
+     this single section becomes a lit screen, which is what a hard ground cut in a chaptered page
+     is for.
 
-     Rendered the way the product's own map is: dense clusters, dependencies between them,
-     evidence moving along the ones that have it. Ink and terracotta, because the nine-stop hue
-     ramp the real renderer uses is calibrated for additive blending on a dark ground and reads as
-     a data-visualisation demo on paper.
+     A perspective plane recedes to a horizon. Every Workday functional area stands on it as a
+     labelled control point, and from each one a fan of dependencies rises into a canopy overhead.
+     The labels are the real areas and the figures beside them are the real check counts, because
+     a visualisation that says DATABASE_10 is a stock image and this one has to be the estate.
 
-     Representative estate. A client's map carries real configuration, and organisation
-     descriptors in Workday can contain a person's name and employee id, so a harvested graph
-     never leaves the tenant it came from and certainly never lands on a public website. */
+     Colour runs cyan to magenta across the estate, which is the reference's language, and is used
+     here for one honest purpose: hue separates one area's dependencies from another's where the
+     fans overlap. */
 
   var abg = document.getElementById('atlasBg');
   var actx = abg ? abg.getContext('2d') : null;
@@ -352,73 +353,112 @@
     return function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
   }
 
-  var ATLAS = (function () {
-    var r = rng(4172026), comms = [], nodes = [], links = [];
-    var N = 11;
-    for (var c = 0; c < N; c++) {
-      var a = (c / N) * Math.PI * 2 + r() * 0.3, rad = 0.20 + r() * 0.19;
-      comms.push({ x: 0.5 + Math.cos(a) * rad * 1.55, y: 0.5 + Math.sin(a) * rad });
-    }
-    comms.push({ x: 0.5, y: 0.5 });
-    comms.forEach(function (cm, ci) {
-      cm.first = nodes.length;
-      var n = 42 + Math.floor(r() * 46) + (ci === comms.length - 1 ? 80 : 0);
-      cm.n = n;
-      for (var i = 0; i < n; i++) {
-        var an = r() * Math.PI * 2, d = Math.pow(r(), 1.75) * (0.05 + r() * 0.045);
-        nodes.push({ x: cm.x + Math.cos(an) * d * 1.5, y: cm.y + Math.sin(an) * d,
-                     s: r() < 0.04 ? 2.3 : r() < 0.19 ? 1.35 : 0.85 });
-      }
-      for (var k = 0; k < n * 1.25; k++) {
-        var a1 = cm.first + Math.floor(r() * n), b1 = cm.first + Math.floor(r() * n);
-        if (a1 !== b1) links.push({ a: a1, b: b1, ev: r() < 0.36 });
-      }
-    });
-    for (var i2 = 0; i2 < comms.length; i2++) {
-      for (var q = 0; q < 4; q++) {
-        var o = Math.floor(r() * comms.length);
-        if (o === i2) continue;
-        for (var k2 = 0; k2 < 5; k2++) {
-          links.push({ a: comms[i2].first + Math.floor(r() * comms[i2].n),
-                       b: comms[o].first + Math.floor(r() * comms[o].n),
-                       ev: r() < 0.6, trunk: true });
-        }
-      }
-    }
-    var xs = nodes.map(function (n) { return n.x; }), ys = nodes.map(function (n) { return n.y; });
-    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
-    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
-    nodes.forEach(function (n) { n.x = (n.x - x0) / (x1 - x0 || 1); n.y = (n.y - y0) / (y1 - y0 || 1); });
+  // near z = 0, far z = 1
+  var CANOPY = [
+    { id: 'CORE_HCM',       n: 412,  x: -1.02, z: 0.30 },
+    { id: 'RECRUITING',     n: 344,  x: -0.74, z: 0.22 },
+    { id: 'TIME_TRACKING',  n: 638,  x: -0.47, z: 0.15 },
+    { id: 'ABSENCE',        n: 507,  x: -0.22, z: 0.08 },
+    { id: 'PAYROLL',        n: 1180, x:  0.02, z: 0.03 },
+    { id: 'BENEFITS',       n: 864,  x:  0.26, z: 0.08 },
+    { id: 'COMPENSATION',   n: 421,  x:  0.51, z: 0.15 },
+    { id: 'FINANCIALS',     n: 289,  x:  0.78, z: 0.22 },
+    { id: 'CARRIER_FILES',  n: 96,   x:  1.04, z: 0.30 }
+  ];
 
-    var ev = [];
-    links.forEach(function (l, i) { if (l.ev) ev.push(i); });
-    var step = Math.max(1, Math.floor(ev.length / 300)), flow = [];
-    for (var f = 0; f < ev.length; f += step) flow.push({ e: ev[f], u: r(), v: 0.05 + r() * 0.13 });
-    return { nodes: nodes, links: links, flow: flow };
+  var FANS = (function () {
+    var r = rng(70141), out = [];
+    CANOPY.forEach(function (a, i) {
+      // A busier area throws more dependencies. The count is the real one, so the density is too.
+      var k = 12 + Math.round(a.n / 42);
+      var arcs = [];
+      for (var q = 0; q < k; q++) {
+        var spread = (q / (k - 1) - 0.5);
+        arcs.push({
+          sx: spread * (0.55 + r() * 0.5),          // where it lands in the canopy
+          sy: 0.02 + r() * 0.10,                    // canopy height band
+          bow: 0.35 + r() * 0.3,
+          u: r(), v: 0.07 + r() * 0.16
+        });
+      }
+      out.push({ area: a, arcs: arcs, hue: i / (CANOPY.length - 1) });
+    });
+    return out;
   })();
 
-  var aW = 0, aH = 0, aDpr = 1, aPlate = null, aVisible = false;
-  function aPx(n) { return { x: 30 + n.x * (aW - 60), y: 26 + n.y * (aH - 52) }; }
+  function hue(t, alpha) {
+    // cyan #22D3EE to magenta #E879F9
+    var r = Math.round(34 + (232 - 34) * t);
+    var g = Math.round(211 + (121 - 211) * t);
+    var b = Math.round(238 + (249 - 238) * t);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
 
-  function buildAtlasPlate() {
+  var aW = 0, aH = 0, aDpr = 1, aPlate = null, aVisible = false, HORIZON = 0;
+
+  function project(x, z) {
+    var pers = 1 / (1 + z * 1.7);
+    return { x: aW / 2 + x * pers * aW * 0.62, y: HORIZON + pers * (aH * 0.82 - HORIZON), p: pers };
+  }
+  function canopyPoint(f, arc) {
+    return { x: aW / 2 + (f.area.x * 0.35 + arc.sx) * aW * 0.62, y: aH * arc.sy };
+  }
+
+  function buildCanopyPlate() {
     aPlate = document.createElement('canvas');
     aPlate.width = Math.round(aW * aDpr); aPlate.height = Math.round(aH * aDpr);
     var g = aPlate.getContext('2d');
     g.setTransform(aDpr, 0, 0, aDpr, 0, 0);
-    ATLAS.links.forEach(function (l) {
-      var A = aPx(ATLAS.nodes[l.a]), B = aPx(ATLAS.nodes[l.b]);
+    g.fillStyle = '#04101F'; g.fillRect(0, 0, aW, aH);
+
+    // ground haze and scattered readings
+    var r = rng(5150);
+    for (var i = 0; i < 420; i++) {
+      var z = r(), x = (r() - 0.5) * 2.2;
+      var P = project(x, z);
+      if (P.y > aH || P.y < HORIZON) continue;
+      g.fillStyle = hue(r(), 0.05 + r() * 0.22);
+      g.beginPath(); g.arc(P.x, P.y + (r() - 0.5) * 26, 0.6 + r() * 1.5, 0, 6.284); g.fill();
+    }
+
+    g.lineCap = 'round';
+    FANS.forEach(function (f) {
+      var base = project(f.area.x, f.area.z);
+      f._base = base;
+      f.arcs.forEach(function (arc) {
+        var top = canopyPoint(f, arc);
+        arc._a = base; arc._b = top;
+        arc._c1 = { x: base.x + (top.x - base.x) * 0.06, y: base.y - (base.y - top.y) * arc.bow };
+        arc._c2 = { x: top.x - (top.x - base.x) * 0.10, y: top.y + (base.y - top.y) * 0.12 };
+        g.strokeStyle = hue(f.hue, 0.30 * base.p + 0.10);
+        g.lineWidth = 0.55 + base.p * 0.5;
+        g.beginPath();
+        g.moveTo(base.x, base.y);
+        g.bezierCurveTo(arc._c1.x, arc._c1.y, arc._c2.x, arc._c2.y, top.x, top.y);
+        g.stroke();
+      });
+    });
+
+    // control points and their labels, set along the sight line like the survey's stations
+    FANS.forEach(function (f) {
+      var b = f._base;
       g.save();
-      g.strokeStyle = 'rgba(22,25,26,' + (l.ev ? (l.trunk ? 0.16 : 0.09) : 0.055) + ')';
-      g.lineWidth = l.trunk ? 0.75 : 0.5;
-      if (!l.ev) g.setLineDash([1.5, 3]);
-      g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.stroke();
+      g.strokeStyle = hue(f.hue, 0.95); g.lineWidth = 1.1;
+      g.beginPath();
+      g.moveTo(b.x, b.y - 5); g.lineTo(b.x + 5, b.y); g.lineTo(b.x, b.y + 5); g.lineTo(b.x - 5, b.y);
+      g.closePath(); g.stroke();
+      g.fillStyle = hue(f.hue, 0.55); g.fill();
+
+      g.translate(b.x - 7, b.y - 12);
+      g.rotate(-Math.PI / 2.9);
+      g.font = '9.5px "IBM Plex Mono", ui-monospace, monospace';
+      g.fillStyle = hue(f.hue, 0.9);
+      g.fillText(f.area.id, 0, 0);
+      g.fillStyle = 'rgba(226,240,248,.42)';
+      g.fillText(f.area.n.toLocaleString('en-US') + ' checks', 0, 12);
       g.restore();
     });
-    ATLAS.nodes.forEach(function (n) {
-      var P = aPx(n);
-      g.fillStyle = 'rgba(22,25,26,' + (n.s > 2 ? 0.5 : n.s > 1 ? 0.3 : 0.17) + ')';
-      g.beginPath(); g.arc(P.x, P.y, n.s, 0, 6.284); g.fill();
-    });
+    return g;
   }
 
   function sizeAtlas() {
@@ -429,7 +469,16 @@
     aW = Math.round(r.width); aH = Math.round(r.height);
     abg.width = Math.round(aW * aDpr); abg.height = Math.round(aH * aDpr);
     actx.setTransform(aDpr, 0, 0, aDpr, 0, 0);
-    buildAtlasPlate();
+    HORIZON = aH * 0.05;
+    buildCanopyPlate();
+  }
+
+  function bez(a, c1, c2, b, u) {
+    var m = 1 - u, m2 = m * m, u2 = u * u;
+    return {
+      x: m2 * m * a.x + 3 * m2 * u * c1.x + 3 * m * u2 * c2.x + u2 * u * b.x,
+      y: m2 * m * a.y + 3 * m2 * u * c1.y + 3 * m * u2 * c2.y + u2 * u * b.y
+    };
   }
 
   function paintAtlas(t) {
@@ -439,27 +488,30 @@
     actx.drawImage(aPlate, 0, 0);
     actx.setTransform(aDpr, 0, 0, aDpr, 0, 0);
     if (reduce) return;
+
     var secs = t / 1000;
-    ATLAS.flow.forEach(function (f) {
-      var l = ATLAS.links[f.e];
-      var A = aPx(ATLAS.nodes[l.a]), B = aPx(ATLAS.nodes[l.b]);
-      var u = (f.u + secs * f.v) % 1;
-      // a tapered streak rather than a dot: it reads as travel, and it reads as fast
-      for (var k = 0; k < 4; k++) {
-        var uu = u - k * 0.018;
-        if (uu < 0) continue;
-        actx.fillStyle = 'rgba(184,67,30,' + (0.62 - k * 0.14) + ')';
-        actx.beginPath();
-        actx.arc(A.x + (B.x - A.x) * uu, A.y + (B.y - A.y) * uu, 1.5 - k * 0.3, 0, 6.284);
-        actx.fill();
-      }
+    actx.save();
+    actx.globalCompositeOperation = 'lighter';        // additive, which is what makes it glow
+    FANS.forEach(function (f) {
+      f.arcs.forEach(function (arc) {
+        if (!arc._a) return;
+        var u = (arc.u + secs * arc.v) % 1;
+        for (var k = 0; k < 5; k++) {
+          var uu = u - k * 0.02;
+          if (uu < 0) break;
+          var P = bez(arc._a, arc._c1, arc._c2, arc._b, uu);
+          actx.fillStyle = hue(f.hue, (0.5 - k * 0.09) * (0.5 + f._base.p * 0.6));
+          actx.beginPath(); actx.arc(P.x, P.y, 1.7 - k * 0.28, 0, 6.284); actx.fill();
+        }
+      });
     });
+    actx.restore();
   }
 
   if (abg && 'IntersectionObserver' in window) {
     new IntersectionObserver(function (rows) {
       rows.forEach(function (r) { aVisible = r.isIntersecting; if (r.isIntersecting && !aPlate) sizeAtlas(); });
-    }, { rootMargin: '200px' }).observe(abg);
+    }, { rootMargin: '250px' }).observe(abg);
   } else { aVisible = true; }
 
   /* ══ the loop ═══════════════════════════════════════════════════════════════════════════════ */

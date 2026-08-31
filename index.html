@@ -119,6 +119,7 @@
     font-family: var(--sc-font-mono); font-size: var(--sc-t-xs);
     letter-spacing: var(--sc-track-wide); text-transform: uppercase;
     color: var(--sc-ink-soft);
+    background: linear-gradient(180deg, rgba(243,244,241,.92) 0%, rgba(243,244,241,0) 100%);
   }
   .masthead b { color: var(--sc-ink); font-weight: 500; }
   .masthead a { margin-left: auto; color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
@@ -211,21 +212,35 @@
   #estateNote { margin-left: auto; }
 
   /* ── chapter IV: media in its own column, with a caption. Never under the type. ─────────── */
-  /* Chapter IV is the map. The copy sits on a paper scrim over it, which is the same
-     cartographic convention the survey uses to keep type off contour hatching. */
-  .chapter--map { position: relative; overflow: hidden; background: #FBFBFA; border-block: 1px solid var(--rule-soft); }
-  #atlasBg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Chapter IV is the one dark chapter. A hard ground cut is what a chaptered page does, and it
+     lets the site be paper for an executive while one section is a lit screen. */
+  .chapter--map {
+    position: relative; overflow: hidden; background: #04101F;
+    border-block: 1px solid rgba(34,211,238,.18);
+    height: 100vh; min-height: 42rem; display: grid; grid-template-rows: minmax(0, 1fr) auto; padding-bottom: var(--sc-5);
+    --sc-ink: #E6F2F8; --sc-ink-soft: #8FA9BC; --rule: rgba(230,242,248,.18); --rule-soft: rgba(230,242,248,.10);
+    color: #E6F2F8;
+  }
+  /* The scene and the readouts are grid ROWS, not a canvas with copy floated over it. Absolute
+     positioning let the copy drift up into the fans at every viewport height, which smothered
+     exactly the thing worth looking at. */
+  #atlasBg { display: block; width: 100%; height: 100%; min-height: 20rem; }
+  .chapter--map h2.ch { font-size: var(--sc-t-lg); max-width: 22ch; margin-bottom: var(--sc-3); }
+  .chapter--map .body { font-size: var(--sc-t-sm); margin-bottom: 0; }
+  .chapter--map .evidence { margin-top: 0; }
+  .chapter--map .evidence li { padding: .35em 0; }
+  .chapter--map .eyebrow { margin-bottom: var(--sc-3); }
+  .chapter--map .eyebrow b { color: #22D3EE; }
+  .chapter--map .evidence li { border-top-color: rgba(230,242,248,.12); }
+  .chapter--map .evidence b { color: #E6F2F8; }
   /* The copy needs its own ground. A pseudo-element at z-index -1 renders BEHIND the canvas,
      because the canvas is positioned in the same stacking context: the scrim has to be a real
      background on a layer above it. */
   .chapter--map .sheet { position: relative; z-index: 1; }
-  .map-copy {
-    position: relative; max-width: 44rem;
-    padding: var(--sc-6) var(--sc-7) var(--sc-6) var(--sc-5);
-    margin-left: calc(var(--sc-5) * -1);
-    background: linear-gradient(90deg,
-      rgba(251,251,250,.985) 0%, rgba(251,251,250,.965) 58%, rgba(251,251,250,.90) 84%, rgba(251,251,250,0) 100%);
-  }
+  .map-copy { position: relative; max-width: 64rem; padding: 0 0 var(--sc-6); }
+  .map-copy .spread-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sc-7); align-items: start; }
+  @media (max-width: 900px) { .map-copy .spread-2 { grid-template-columns: minmax(0, 1fr); gap: var(--sc-5); } }
+  .chapter--map .map-note { color: #7C93A6; }
   /* The trail is read over the map too, so it gets the same treatment. */
   .ledger { background: linear-gradient(90deg, rgba(243,244,241,.94) 0%, rgba(243,244,241,.80) 100%); }
   .map-note { margin: var(--sc-5) 0 0; font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
@@ -402,9 +417,12 @@
     <div class="sheet">
       <div class="map-copy" data-sc-in data-sc-stagger="70">
         <p class="eyebrow"><b>Chapter IV</b> · the estate, one level down</p>
-        <h2 class="ch">Every object, and everything that depends on it.</h2>
-        <p class="body">Before anything is watched, it is mapped. A read only harvest builds a picture of how your tenant is actually wired: which integrations feed which reports, which security domains govern which processes, and what a change to any one of them would touch.</p>
-        <p class="body">That map is why an amber on the board can name a cause rather than a symptom, and why a question about last March has an answer with a date on it.</p>
+        <div class="spread-2">
+          <div>
+            <h2 class="ch">Every object, and everything that depends on it.</h2>
+            <p class="body">A read only harvest builds a picture of how your tenant is actually wired: which integrations feed which reports, which domains govern which processes, and what a change to any one of them would touch. It is why an amber on the board can name a cause rather than a symptom.</p>
+          </div>
+          <div>
         <ul class="evidence">
           <li><b>Harvest</b><span>read only. Nothing is written to your tenant to build the picture.</span></li>
           <li><b>Evidence</b><span>every dependency is marked verified or inferred, and says which.</span></li>
@@ -412,6 +430,8 @@
           <li><b>Record</b><span>who, what, when, and the check that passed, kept as it happens.</span></li>
         </ul>
         <p class="map-note">Representative estate. A client's map is client data and stays in their tenant.</p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
