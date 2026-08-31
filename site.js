@@ -115,250 +115,199 @@
   })();
 
   /* ══ 2 · THE ESTATE, RUNNING (the peak) ════════════════════════════════════════════════════
-     Named functional areas, the real flows between them, and traffic that never stops. The
-     animation is NOT scroll-driven: payroll does not stop running because a reader stopped
-     scrolling. Scroll drives the release cycle over the top of it, which is a different clock. */
+     One chart. One tenant in the middle, everything that crosses its edge around it, and a
+     release cycle running over the top of it.
 
-  // Inside the tenant. Check counts are the real ones the page prints elsewhere.
-  var AREAS = {
-    recruiting: { checks: 344,  label: 'Recruiting' },
-    hcm:        { checks: 412,  label: 'Core HCM' },
-    time:       { checks: 638,  label: 'Time Tracking' },
-    absence:    { checks: 507,  label: 'Absence' },
-    benefits:   { checks: 864,  label: 'Benefits' },
-    payroll:    { checks: 1180, label: 'Payroll' },
-    comp:       { checks: 421,  label: 'Compensation' }
-  };
-  // Outside it. Named, not measured: a check count on "time clocks" would be a number nobody
-  // counted, and the tenant is the thing being checked.
-  var EXTERNAL = {
-    applicant: { label: 'Applicant tracking' }, clocks: { label: 'Time clocks' },
-    carriers:  { label: 'Benefit carriers' },   bank:   { label: 'Bank and tax' },
-    carrier:   { label: 'Carrier files' },      gl:     { label: 'General ledger' }
-  };
-  var INSIDE = Object.keys(AREAS);
+     There were two of these and they said overlapping things in different visual languages. This
+     is the one that survived, and it inherited the other's functionality: a scroll-driven cycle
+     where two flows stop with a named cause and then resume with the week they closed in.
 
-  // Three kinds of flow, and the distinction is the whole point of merging the two diagrams:
-  // what arrives, what moves between areas, and what leaves. An amber inside the tenant can now
-  // visibly stop something crossing the edge, which is what an HR executive actually feels.
-  var LINKS = [
-    { a: 'applicant',  b: 'recruiting', w: 0.5, what: 'candidates',  edge: 'in' },
-    { a: 'clocks',     b: 'time',       w: 0.9, what: 'punches',     edge: 'in' },
-    { a: 'carriers',   b: 'benefits',   w: 0.5, what: 'confirmations', edge: 'in' },
+     The animation is NOT scroll-driven. Payroll does not stop running because a reader stopped
+     scrolling. Scroll drives the CYCLE, which is a different clock, and the traffic keeps moving
+     underneath it. */
 
-    { a: 'recruiting', b: 'hcm',        w: 0.5, what: 'new hires' },
-    { a: 'hcm',        b: 'payroll',    w: 1.0, what: 'worker data' },
-    { a: 'hcm',        b: 'benefits',   w: 0.7, what: 'eligibility' },
-    { a: 'hcm',        b: 'comp',       w: 0.5, what: 'job and grade' },
-    { a: 'time',       b: 'payroll',    w: 0.9, what: 'hours' },
-    { a: 'absence',    b: 'payroll',    w: 0.6, what: 'leave' },
-    { a: 'comp',       b: 'payroll',    w: 0.6, what: 'pay rates' },
-    { a: 'benefits',   b: 'payroll',    w: 0.7, what: 'deductions' },
-
-    { a: 'payroll',    b: 'bank',       w: 0.9, what: 'payments',  edge: 'out' },
-    { a: 'benefits',   b: 'carrier',    w: 0.6, what: 'elections', edge: 'out' },
-    { a: 'payroll',    b: 'gl',         w: 0.6, what: 'postings',  edge: 'out' }
+  var INBOUND = [
+    { k: 'applicant', id: 'Applicant tracking', w: 0.6 },
+    { k: 'clocks',    id: 'Time clocks',        w: 1.0 },
+    { k: 'carriers',  id: 'Benefit carriers',   w: 0.6 },
+    { k: 'learning',  id: 'Learning',           w: 0.4 },
+    { k: 'checks',    id: 'Background checks',  w: 0.35 },
+    { k: 'expense',   id: 'Expense',            w: 0.45 }
+  ];
+  var OUTBOUND = [
+    { k: 'bank',    id: 'Payroll bank file', w: 1.0 },
+    { k: 'tax',     id: 'Tax filing',        w: 0.6 },
+    { k: 'carrier', id: 'Carrier files',     w: 0.7 },
+    { k: 'gl',      id: 'General ledger',    w: 0.6 },
+    { k: 'report',  id: 'Reporting',         w: 0.5 },
+    { k: 'badge',   id: 'Badge and access',  w: 0.35 }
   ];
 
+  // The two failures from chapter I, landing on the thing an executive actually feels: a file
+  // that stops leaving the tenant.
   var RAISES = [
-    { area: 'payroll',  link: 'payroll>bank',    at: 0.40, close: 0.70,
-      cause: 'pay component maps to a retired earning', ledger: 'r1', week: 8 },
-    { area: 'benefits', link: 'benefits>carrier', at: 0.52, close: 0.82,
-      cause: 'carrier changed the file width at source', ledger: 'r2', week: 10 }
+    { k: 'bank',    at: 0.40, close: 0.70, week: 8,
+      cause: 'pay component maps to a retired earning', ledger: 'r1' },
+    { k: 'carrier', at: 0.52, close: 0.82, week: 10,
+      cause: 'carrier changed the file width at source', ledger: 'r2' }
   ];
+
+  // The real figure: the sum of the check counts this page prints for the seven functional areas.
+  var CHECK_TOTAL = 4366;
+
+  var IN_C = '14,116,144', OUT_C = '124,45,182', WARN = '160,98,10';
 
   var estateEl = document.getElementById('estate');
-  var eCanvas = document.getElementById('estateCanvas');
-  var ectx = eCanvas ? eCanvas.getContext('2d') : null;
+  var ecv = document.getElementById('estateCanvas');
+  var ectx = ecv ? ecv.getContext('2d') : null;
+  var boardAct = estateEl ? estateEl.closest('[data-sc-act="pin"]') : null;
   var phaseEl = document.getElementById('boardPhase');
   var clockEl = document.getElementById('boardClock');
   var sAreas = document.getElementById('statAreas');
   var sChecks = document.getElementById('statChecks');
   var sCaught = document.getElementById('statCaught');
   var noteEl = document.getElementById('estateNote');
-  var boardAct = estateEl ? estateEl.closest('[data-sc-act="pin"]') : null;
 
-  var ndEls = {}, pts = {};
-  if (estateEl) {
-    [].forEach.call(estateEl.querySelectorAll('.nd'), function (el) {
-      ndEls[el.getAttribute('data-k')] = el;
+  var eW = 0, eH = 0, eDpr = 1, HUB = null;
+
+  function layout() {
+    HUB = { x: eW * 0.5, y: eH * 0.5, r: Math.max(44, Math.min(74, eW * 0.05)) };
+    var span = eH * 0.80, top = eH * 0.10;
+    INBOUND.forEach(function (s, i) {
+      s.x = eW * 0.265; s.y = top + (i / (INBOUND.length - 1)) * span;
+      s.c1 = { x: eW * 0.40, y: s.y }; s.c2 = { x: eW * 0.44, y: HUB.y };
+      s.ex = HUB.x - HUB.r - 3; s.ey = HUB.y;
+    });
+    OUTBOUND.forEach(function (s, i) {
+      s.x = eW * 0.735; s.y = top + (i / (OUTBOUND.length - 1)) * span;
+      s.c1 = { x: eW * 0.56, y: HUB.y }; s.c2 = { x: eW * 0.60, y: s.y };
+      s.ex = HUB.x + HUB.r + 3; s.ey = HUB.y;
     });
   }
 
-  var eW = 0, eH = 0, eDpr = 1;
+  function pathOf(s, dir) {
+    return dir === 'in'
+      ? { a: { x: s.x, y: s.y }, c1: s.c1, c2: s.c2, b: { x: s.ex, y: s.ey } }
+      : { a: { x: s.ex, y: s.ey }, c1: s.c1, c2: s.c2, b: { x: s.x, y: s.y } };
+  }
+  function bez(P, u) {
+    var m = 1 - u, m2 = m * m, u2 = u * u;
+    return {
+      x: m2 * m * P.a.x + 3 * m2 * u * P.c1.x + 3 * m * u2 * P.c2.x + u2 * u * P.b.x,
+      y: m2 * m * P.a.y + 3 * m2 * u * P.c1.y + 3 * m * u2 * P.c2.y + u2 * u * P.b.y
+    };
+  }
+
+  var PARTICLES = (function () {
+    var r = rng(31337), out = [];
+    INBOUND.forEach(function (s) {
+      var n = 4 + Math.round(s.w * 6);
+      for (var i = 0; i < n; i++) out.push({ s: s, dir: 'in', u: r(), v: 0.024 + r() * 0.02 });
+    });
+    OUTBOUND.forEach(function (s) {
+      var n = 4 + Math.round(s.w * 6);
+      for (var i = 0; i < n; i++) out.push({ s: s, dir: 'out', u: r(), v: 0.024 + r() * 0.02 });
+    });
+    return out;
+  })();
+
   function sizeEstate() {
     if (!ectx || !estateEl) return;
     var box = estateEl.getBoundingClientRect();
+    if (!box.width || !box.height) return;
     eDpr = Math.min(window.devicePixelRatio || 1, 2);
-    eW = Math.max(1, Math.round(box.width));
-    eH = Math.max(1, Math.round(box.height));
-    eCanvas.width = Math.round(eW * eDpr);
-    eCanvas.height = Math.round(eH * eDpr);
+    eW = Math.round(box.width); eH = Math.round(box.height);
+    ecv.width = Math.round(eW * eDpr); ecv.height = Math.round(eH * eDpr);
     ectx.setTransform(eDpr, 0, 0, eDpr, 0, 0);
-    // Positions come from the laid-out DOM, so the lines can never disagree with the labels.
-    Object.keys(ndEls).forEach(function (k) {
-      var r = ndEls[k].getBoundingClientRect();
-      pts[k] = { x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height / 2,
-                 w: r.width, h: r.height };
-    });
-  }
-
-  // Particles are laid out once per link and simply advance; density follows the link's weight.
-  var PARTS = [];
-  (function seed() {
-    var r = rng(90210);
-    LINKS.forEach(function (l) {
-      l.id = l.a + '>' + l.b;
-      var n = Math.round(4 + l.w * 9);
-      for (var i = 0; i < n; i++) {
-        PARTS.push({ l: l, u: r(), v: (0.055 + r() * 0.05) * (0.6 + l.w * 0.6) });
-      }
-    });
-  })();
-
-  // A node's edge, so a line stops at the card rather than running under the label.
-  function edgePoint(from, to) {
-    var dx = to.x - from.x, dy = to.y - from.y;
-    var m = Math.max(Math.abs(dx) / (from.w / 2 + 9), Math.abs(dy) / (from.h / 2 + 7)) || 1;
-    return { x: from.x + dx / m, y: from.y + dy / m };
+    layout();
   }
 
   var CYCLE = { HOLD: 0.18, RUN: 0.28, CLOSE: 0.90 };
-  var lastRaiseKey = '';
 
   function paintEstate(p, t) {
     if (!ectx || !eW) return;
-    var secs = t / 1000;
-    var running = p > CYCLE.RUN;
-    var caught = 0, checksShown = 0;
+    var secs = t / 1000, running = p > CYCLE.RUN, caught = 0;
 
-    // which links are stalled, and which areas are raised
-    var stalled = {}, raised = {};
+    var stopped = {};
     RAISES.forEach(function (r) {
-      if (p >= r.at && p < r.close) { stalled[r.link] = true; raised[r.area] = r; }
+      if (p >= r.at && p < r.close) stopped[r.k] = r;
       else if (p >= r.close) { caught++; ledgerClose(r.ledger, 'week ' + r.week); }
     });
     if (p >= CYCLE.CLOSE) ledgerClose('r4', 'week 12');
 
-    // A raised card is wider than a holding one, so the measured geometry is stale the moment the
-    // state changes. Re-measure then, and only then.
-    var raiseKey = Object.keys(raised).sort().join(',');
-    if (raiseKey !== lastRaiseKey) { lastRaiseKey = raiseKey; sizeEstate(); }
-
     ectx.clearRect(0, 0, eW, eH);
+    ectx.lineCap = 'round';
 
-    // The tenant, drawn as the boundary it is. Everything inside is Workday; everything outside
-    // is somebody else's system, and the line between them is what the chapter is about.
-    var bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
-    INSIDE.forEach(function (k) {
-      var q = pts[k];
-      if (!q) return;
-      bx0 = Math.min(bx0, q.x - q.w / 2); bx1 = Math.max(bx1, q.x + q.w / 2);
-      by0 = Math.min(by0, q.y - q.h / 2); by1 = Math.max(by1, q.y + q.h / 2);
-    });
-    if (bx1 > bx0) {
-      var pad = 26;
-      ectx.save();
-      ectx.strokeStyle = 'rgba(22,25,26,.30)';
-      ectx.lineWidth = 1.1;
-      ectx.beginPath();
-      if (ectx.roundRect) ectx.roundRect(bx0 - pad, by0 - pad, (bx1 - bx0) + pad * 2, (by1 - by0) + pad * 2, 10);
-      else ectx.rect(bx0 - pad, by0 - pad, (bx1 - bx0) + pad * 2, (by1 - by0) + pad * 2);
-      ectx.stroke();
-      ectx.font = '600 10px "IBM Plex Mono", ui-monospace, monospace';
-      ectx.fillStyle = 'rgba(22,25,26,.62)';
-      ectx.textAlign = 'left';
-      ectx.fillText('WORKDAY · ONE TENANT', bx0 - pad + 2, by0 - pad - 7);
-      ectx.restore();
+    function side(list, dir, col) {
+      list.forEach(function (s) {
+        var P = pathOf(s, dir), bad = stopped[s.k];
+        ectx.save();
+        ectx.strokeStyle = bad ? 'rgba(' + WARN + ',.85)' : 'rgba(' + col + ',' + (0.14 + s.w * 0.16) + ')';
+        ectx.lineWidth = bad ? 1.5 : 0.7 + s.w * 1.4;
+        if (bad) ectx.setLineDash([5, 4]);
+        ectx.beginPath();
+        ectx.moveTo(P.a.x, P.a.y);
+        ectx.bezierCurveTo(P.c1.x, P.c1.y, P.c2.x, P.c2.y, P.b.x, P.b.y);
+        ectx.stroke();
+        ectx.restore();
+
+        ectx.save();
+        ectx.fillStyle = bad ? 'rgba(' + WARN + ',1)' : 'rgba(' + col + ',.95)';
+        ectx.beginPath(); ectx.arc(s.x, s.y, bad ? 4.4 : 3.4, 0, 6.284); ectx.fill();
+        ectx.textAlign = dir === 'in' ? 'right' : 'left';
+        var tx = s.x + (dir === 'in' ? -10 : 10);
+        ectx.font = '500 11.5px "IBM Plex Mono", ui-monospace, monospace';
+        ectx.fillStyle = bad ? 'rgba(' + WARN + ',1)' : 'rgba(22,25,26,.78)';
+        ectx.fillText(s.id, tx, s.y + (bad ? -2 : 4));
+        if (bad) {
+          ectx.font = '9.5px "IBM Plex Mono", ui-monospace, monospace';
+          ectx.fillStyle = 'rgba(' + WARN + ',.9)';
+          ectx.fillText('STOPPED', tx, s.y + 11);
+        }
+        ectx.restore();
+      });
     }
-
-    LINKS.forEach(function (l) {
-      var A = pts[l.a], B = pts[l.b];
-      if (!A || !B) return;
-      var a = edgePoint(A, B), b = edgePoint(B, A);
-      var bad = stalled[l.id];
-      ectx.save();
-      ectx.strokeStyle = bad ? '#A0620A' : 'rgba(22,25,26,.22)';
-      ectx.lineWidth = bad ? 1.4 : 0.6 + l.w * 0.9;
-      if (bad) ectx.setLineDash([4, 4]);
-      ectx.beginPath(); ectx.moveTo(a.x, a.y); ectx.lineTo(b.x, b.y); ectx.stroke();
-      ectx.restore();
-      l._a = a; l._b = b;
-
-      // What moves, written on the line that moves it. Without this the diagram is pretty and
-      // mute: an executive can see that Time Tracking reaches Payroll but not that it is hours.
-      var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      var ang = Math.atan2(b.y - a.y, b.x - a.x);
-      if (Math.abs(ang) > Math.PI / 2) ang += Math.PI;          // never set text upside down
-      ectx.save();
-      ectx.translate(mx, my);
-      ectx.rotate(ang);
-      ectx.font = '9px "IBM Plex Mono", ui-monospace, monospace';
-      ectx.textAlign = 'center';
-      ectx.fillStyle = bad ? '#A0620A' : 'rgba(22,25,26,.45)';
-      ectx.fillText(bad ? 'stopped' : l.what, 0, -4);
-      ectx.restore();
-    });
+    side(INBOUND, 'in', IN_C);
+    side(OUTBOUND, 'out', OUT_C);
 
     if (!reduce) {
-      // Tapered streaks, not dots. A dot travelling a line reads as a dot; a streak reads as
-      // motion, and four stacked circles of falling radius cost less than a gradient stroke.
-      ectx.save();
-      PARTS.forEach(function (q) {
-        var l = q.l;
-        if (!l._a || stalled[l.id]) return;          // a stalled flow is a flow that STOPPED
+      PARTICLES.forEach(function (q) {
+        if (stopped[q.s.k]) return;                     // a stopped flow is a flow that STOPPED
+        var P = pathOf(q.s, q.dir), col = q.dir === 'in' ? IN_C : OUT_C;
         var u = (q.u + secs * q.v) % 1;
-        var dx = l._b.x - l._a.x, dy = l._b.y - l._a.y;
-        for (var k = 0; k < 5; k++) {
-          var uu = u - k * 0.016;
+        for (var k = 0; k < 4; k++) {
+          var uu = u - k * 0.012;
           if (uu < 0) break;
-          ectx.fillStyle = 'rgba(184,67,30,' + (0.9 - k * 0.17) + ')';
-          ectx.beginPath();
-          ectx.arc(l._a.x + dx * uu, l._a.y + dy * uu, 2.1 - k * 0.34, 0, Math.PI * 2);
-          ectx.fill();
+          var pt = bez(P, uu);
+          ectx.fillStyle = 'rgba(' + col + ',' + (0.85 - k * 0.19) + ')';
+          ectx.beginPath(); ectx.arc(pt.x, pt.y, 2.3 - k * 0.42, 0, 6.284); ectx.fill();
         }
       });
-      ectx.restore();
-
-      // One bright pulse runs the length of every live link on a slow cycle, so the diagram has a
-      // heartbeat rather than only traffic.
-      ectx.save();
-      LINKS.forEach(function (l, i) {
-        if (!l._a || stalled[l.id]) return;
-        var pu = ((secs * 0.34) + i * 0.11) % 1;
-        var g = 1 - Math.abs(pu - 0.5) * 2;
-        ectx.globalAlpha = g * g * 0.5;
-        ectx.strokeStyle = 'rgba(184,67,30,1)';
-        ectx.lineWidth = 1.6;
-        var sx = l._a.x + (l._b.x - l._a.x) * Math.max(0, pu - 0.12);
-        var sy = l._a.y + (l._b.y - l._a.y) * Math.max(0, pu - 0.12);
-        ectx.beginPath();
-        ectx.moveTo(sx, sy);
-        ectx.lineTo(l._a.x + (l._b.x - l._a.x) * pu, l._a.y + (l._b.y - l._a.y) * pu);
-        ectx.stroke();
-      });
-      ectx.restore();
     }
 
-    Object.keys(EXTERNAL).forEach(function (k) {
-      var el = ndEls[k];
-      if (!el) return;
-      var i = el.querySelector('[data-c]');
-      if (i && !i.textContent) i.textContent = 'external system';
-    });
+    // the tenant
+    var shown = running ? Math.round(CHECK_TOTAL * Math.min(1, (p - CYCLE.RUN) / 0.5)) : 0;
+    ectx.save();
+    ectx.beginPath(); ectx.arc(HUB.x, HUB.y, HUB.r, 0, 6.284);
+    ectx.fillStyle = 'rgba(255,255,255,.97)'; ectx.fill();
+    ectx.strokeStyle = Object.keys(stopped).length ? 'rgba(' + WARN + ',.8)' : 'rgba(22,25,26,.78)';
+    ectx.lineWidth = 1.5; ectx.stroke();
+    ectx.beginPath(); ectx.arc(HUB.x, HUB.y, HUB.r + 7, 0, 6.284);
+    ectx.strokeStyle = 'rgba(22,25,26,.14)'; ectx.lineWidth = 1; ectx.stroke();
+    ectx.textAlign = 'center';
+    ectx.fillStyle = '#16191A';
+    ectx.font = '600 16px "Source Sans 3", system-ui, sans-serif';
+    ectx.fillText('Workday', HUB.x, HUB.y - 4);
+    ectx.font = '10px "IBM Plex Mono", ui-monospace, monospace';
+    ectx.fillStyle = 'rgba(22,25,26,.55)';
+    ectx.fillText(shown ? shown.toLocaleString('en-US') + ' checks' : 'one tenant', HUB.x, HUB.y + 12);
+    ectx.restore();
 
-    Object.keys(AREAS).forEach(function (k) {
-      var el = ndEls[k], a = AREAS[k];
-      if (!el) return;
-      var r = raised[k];
-      var done = RAISES.some(function (x) { return x.area === k && p >= x.close; });
-      el.classList.toggle('is-raised', !!r);
-      el.classList.toggle('is-fixed', done && p < CYCLE.CLOSE + 0.08);
-      var n = running ? Math.round(a.checks * Math.min(1, (p - CYCLE.RUN) / 0.5)) : 0;
-      checksShown += n;
-      var i = el.querySelector('[data-c]');
-      if (i) i.textContent = r ? r.cause : (n ? n.toLocaleString('en-US') + ' checks' : 'holding');
-    });
+    ectx.font = '10px "IBM Plex Mono", ui-monospace, monospace';
+    ectx.fillStyle = 'rgba(' + IN_C + ',.85)';
+    ectx.textAlign = 'left'; ectx.fillText('INBOUND', 4, 12);
+    ectx.fillStyle = 'rgba(' + OUT_C + ',.85)';
+    ectx.textAlign = 'right'; ectx.fillText('OUTBOUND', eW - 4, 12);
 
     if (phaseEl) {
       phaseEl.textContent = p < CYCLE.HOLD ? 'monitoring'
@@ -366,205 +315,25 @@
         : p < CYCLE.CLOSE ? 'release week, checks running' : 'cycle closed';
     }
     if (clockEl) clockEl.textContent = 'week ' + Math.max(0, Math.min(12, Math.round(p * 12)));
-    if (sAreas) sAreas.textContent = Object.keys(AREAS).length;
-    if (sChecks) sChecks.textContent = checksShown.toLocaleString('en-US');
+    if (sAreas) sAreas.textContent = INBOUND.length + OUTBOUND.length;
+    if (sChecks) sChecks.textContent = shown.toLocaleString('en-US');
     if (sCaught) sCaught.textContent = caught;
     if (noteEl) {
-      noteEl.textContent = Object.keys(stalled).length
-        ? 'a stopped line is a flow that stopped'
+      var open = Object.keys(stopped).map(function (k) { return stopped[k]; });
+      noteEl.textContent = open.length
+        ? open.map(function (r) { return r.cause; }).join('  ·  ')
         : 'representative cycle';
+      noteEl.style.color = open.length ? 'rgb(' + WARN + ')' : '';
     }
     if (estateEl) {
       estateEl.setAttribute('data-sc-verify-state',
-        [phaseEl ? phaseEl.textContent : '', checksShown, Object.keys(stalled).length, caught].join('|'));
+        [phaseEl ? phaseEl.textContent : '', shown, Object.keys(stopped).length, caught].join('|'));
     }
   }
-
-  /* ══ 3 · THE BOUNDARY ═══════════════════════════════════════════════════════════════════════
-     One tenant in the middle, and everything that crosses its edge.
-
-     Chapter III is what happens INSIDE Workday: functional areas and the flows between them.
-     This is the boundary: what arrives, and what leaves. An HR executive recognises this picture
-     immediately, because it is the diagram they are shown in every integration conversation, and
-     the one nobody ever keeps up to date.
-
-     No invented figures. The systems here are named, not measured: putting a check count on
-     "background checks" would be a number nobody counted, and this page has been careful about
-     that everywhere else. */
-
-  var abg = document.getElementById('atlasBg');
-  var actx = abg ? abg.getContext('2d') : null;
 
   function rng(seed) {
     return function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
   }
-
-  var INBOUND = [
-    { id: 'Applicant tracking',  w: 0.8 },
-    { id: 'Time clocks',         w: 1.0 },
-    { id: 'Benefit carriers',    w: 0.7 },
-    { id: 'Learning',            w: 0.5 },
-    { id: 'Background checks',   w: 0.4 },
-    { id: 'Expense',             w: 0.5 }
-  ];
-  var OUTBOUND = [
-    { id: 'Payroll bank file',   w: 1.0 },
-    { id: 'Tax filing',          w: 0.7 },
-    { id: 'Carrier files',       w: 0.8 },
-    { id: 'General ledger',      w: 0.7 },
-    { id: 'Reporting',           w: 0.6 },
-    { id: 'Badge and access',    w: 0.4 }
-  ];
-
-  // Deeper than the reference's neon, because that was calibrated for a black ground and this one
-  // is paper. Teal for what arrives, violet for what leaves: direction has a colour, so a reader
-  // can tell inbound from outbound without following a line to its end.
-  var IN_C = '14,116,144', OUT_C = '124,45,182';
-
-  var aW = 0, aH = 0, aDpr = 1, aPlate = null, aVisible = false, HUB = null;
-
-  function layout() {
-    HUB = { x: aW * 0.5, y: aH * 0.52, r: Math.max(46, Math.min(78, aW * 0.052)) };
-    var spanY = aH * 0.74, top = aH * 0.13;
-    INBOUND.forEach(function (s, i) {
-      s.x = aW * 0.13;
-      s.y = top + (i / (INBOUND.length - 1)) * spanY;
-      s.c1 = { x: aW * 0.34, y: s.y };
-      s.c2 = { x: aW * 0.40, y: HUB.y };
-      s.tx = HUB.x - HUB.r - 4; s.ty = HUB.y;
-    });
-    OUTBOUND.forEach(function (s, i) {
-      s.x = aW * 0.87;
-      s.y = top + (i / (OUTBOUND.length - 1)) * spanY;
-      s.c1 = { x: aW * 0.60, y: HUB.y };
-      s.c2 = { x: aW * 0.66, y: s.y };
-      s.fx = HUB.x + HUB.r + 4; s.fy = HUB.y;
-    });
-  }
-
-  var PARTICLES = (function () {
-    var r = rng(31337), out = [];
-    INBOUND.forEach(function (s) {
-      var n = 5 + Math.round(s.w * 7);
-      // Slow. Data crossing a tenant boundary is not a light show, and a slower particle is
-      // easier to follow from one end of its path to the other.
-      for (var i = 0; i < n; i++) out.push({ s: s, dir: 'in', u: r(), v: 0.026 + r() * 0.022 });
-    });
-    OUTBOUND.forEach(function (s) {
-      var n = 5 + Math.round(s.w * 7);
-      for (var i = 0; i < n; i++) out.push({ s: s, dir: 'out', u: r(), v: 0.026 + r() * 0.022 });
-    });
-    return out;
-  })();
-
-  function bez(a, c1, c2, b, u) {
-    var m = 1 - u, m2 = m * m, u2 = u * u;
-    return {
-      x: m2 * m * a.x + 3 * m2 * u * c1.x + 3 * m * u2 * c2.x + u2 * u * b.x,
-      y: m2 * m * a.y + 3 * m2 * u * c1.y + 3 * m * u2 * c2.y + u2 * u * b.y
-    };
-  }
-  function pathOf(p) {
-    var s = p.s;
-    return p.dir === 'in'
-      ? { a: { x: s.x, y: s.y }, c1: s.c1, c2: s.c2, b: { x: s.tx, y: s.ty } }
-      : { a: { x: s.fx, y: s.fy }, c1: s.c1, c2: s.c2, b: { x: s.x, y: s.y } };
-  }
-
-  function buildPlate() {
-    aPlate = document.createElement('canvas');
-    aPlate.width = Math.round(aW * aDpr); aPlate.height = Math.round(aH * aDpr);
-    var g = aPlate.getContext('2d');
-    g.setTransform(aDpr, 0, 0, aDpr, 0, 0);
-    g.lineCap = 'round';
-
-    function drawSide(list, dir, col) {
-      list.forEach(function (s) {
-        var P = pathOf({ s: s, dir: dir });
-        g.strokeStyle = 'rgba(' + col + ',' + (0.13 + s.w * 0.16) + ')';
-        g.lineWidth = 0.7 + s.w * 1.5;
-        g.beginPath();
-        g.moveTo(P.a.x, P.a.y);
-        g.bezierCurveTo(P.c1.x, P.c1.y, P.c2.x, P.c2.y, P.b.x, P.b.y);
-        g.stroke();
-
-        // the system, named
-        g.save();
-        g.fillStyle = 'rgba(' + col + ',.95)';
-        g.beginPath(); g.arc(s.x, s.y, 3.4, 0, 6.284); g.fill();
-        g.font = '500 11px "IBM Plex Mono", ui-monospace, monospace';
-        g.fillStyle = 'rgba(22,25,26,.72)';
-        g.textAlign = dir === 'in' ? 'right' : 'left';
-        g.fillText(s.id, s.x + (dir === 'in' ? -10 : 10), s.y + 3.5);
-        g.restore();
-      });
-    }
-    drawSide(INBOUND, 'in', IN_C);
-    drawSide(OUTBOUND, 'out', OUT_C);
-
-    // the tenant
-    g.save();
-    g.beginPath(); g.arc(HUB.x, HUB.y, HUB.r, 0, 6.284);
-    g.fillStyle = 'rgba(255,255,255,.96)'; g.fill();
-    g.strokeStyle = 'rgba(22,25,26,.75)'; g.lineWidth = 1.4; g.stroke();
-    g.beginPath(); g.arc(HUB.x, HUB.y, HUB.r + 7, 0, 6.284);
-    g.strokeStyle = 'rgba(22,25,26,.16)'; g.lineWidth = 1; g.stroke();
-    g.textAlign = 'center';
-    g.fillStyle = '#16191A';
-    g.font = '600 17px "Source Sans 3", system-ui, sans-serif';
-    g.fillText('Workday', HUB.x, HUB.y - 1);
-    g.font = '10px "IBM Plex Mono", ui-monospace, monospace';
-    g.fillStyle = 'rgba(22,25,26,.5)';
-    g.fillText('one tenant', HUB.x, HUB.y + 15);
-    g.restore();
-
-    // which way is which, said once
-    g.font = '10px "IBM Plex Mono", ui-monospace, monospace';
-    g.fillStyle = 'rgba(' + IN_C + ',.85)';
-    g.textAlign = 'left'; g.fillText('INBOUND', aW * 0.045, aH * 0.06);
-    g.fillStyle = 'rgba(' + OUT_C + ',.85)';
-    g.textAlign = 'right'; g.fillText('OUTBOUND', aW * 0.955, aH * 0.06);
-  }
-
-  function sizeAtlas() {
-    if (!actx || !abg) return;
-    var r = abg.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    aDpr = Math.min(window.devicePixelRatio || 1, 2);
-    aW = Math.round(r.width); aH = Math.round(r.height);
-    abg.width = Math.round(aW * aDpr); abg.height = Math.round(aH * aDpr);
-    actx.setTransform(aDpr, 0, 0, aDpr, 0, 0);
-    layout();
-    buildPlate();
-  }
-
-  function paintAtlas(t) {
-    if (!actx || !aPlate || !aVisible) return;
-    actx.setTransform(1, 0, 0, 1, 0, 0);
-    actx.clearRect(0, 0, abg.width, abg.height);
-    actx.drawImage(aPlate, 0, 0);
-    actx.setTransform(aDpr, 0, 0, aDpr, 0, 0);
-    if (reduce) return;
-
-    var secs = t / 1000;
-    PARTICLES.forEach(function (p) {
-      var P = pathOf(p), col = p.dir === 'in' ? IN_C : OUT_C;
-      var u = (p.u + secs * p.v) % 1;
-      for (var k = 0; k < 4; k++) {
-        var uu = u - k * 0.012;
-        if (uu < 0) break;
-        var pt = bez(P.a, P.c1, P.c2, P.b, uu);
-        actx.fillStyle = 'rgba(' + col + ',' + (0.85 - k * 0.19) + ')';
-        actx.beginPath(); actx.arc(pt.x, pt.y, 2.3 - k * 0.42, 0, 6.284); actx.fill();
-      }
-    });
-  }
-
-  if (abg && 'IntersectionObserver' in window) {
-    new IntersectionObserver(function (rows) {
-      rows.forEach(function (r) { aVisible = r.isIntersecting; if (r.isIntersecting && !aPlate) sizeAtlas(); });
-    }, { rootMargin: '250px' }).observe(abg);
-  } else { aVisible = true; }
 
   /* ══ the loop ═══════════════════════════════════════════════════════════════════════════════ */
 
@@ -573,24 +342,17 @@
     queued = false;
     var raw = boardAct ? parseFloat(boardAct.style.getPropertyValue('--sc-p')) : 0;
     paintEstate(isNaN(raw) ? 0 : raw, now || 0);
-    paintAtlas(now || 0);
     tick();
   }
   function tick() { if (queued) return; queued = true; requestAnimationFrame(frame); }
 
   ledgerRender();
   sizeEstate();
-  sizeAtlas();
   paintEstate(0, 0);
   tick();
 
   if (window.ResizeObserver && estateEl) new ResizeObserver(sizeEstate).observe(estateEl);
   else window.addEventListener('resize', sizeEstate);
 
-  if (window.ResizeObserver && abg) new ResizeObserver(sizeAtlas).observe(abg);
-  else window.addEventListener('resize', sizeAtlas);
-
-  // Reduced motion keeps the meaning and drops the theatre: the cycle still advances with scroll,
-  // it just does not hold anything back to make an entrance.
   if (reduce) { CYCLE.HOLD = 0.02; CYCLE.RUN = 0.06; }
 })();
