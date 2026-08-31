@@ -119,39 +119,49 @@
      animation is NOT scroll-driven: payroll does not stop running because a reader stopped
      scrolling. Scroll drives the release cycle over the top of it, which is a different clock. */
 
+  // Inside the tenant. Check counts are the real ones the page prints elsewhere.
   var AREAS = {
-    recruiting: { checks: 344, label: 'Recruiting' },
-    time:       { checks: 638, label: 'Time Tracking' },
-    absence:    { checks: 507, label: 'Absence' },
-    hcm:        { checks: 412, label: 'Core HCM' },
-    comp:       { checks: 421, label: 'Compensation' },
-    benefits:   { checks: 864, label: 'Benefits' },
+    recruiting: { checks: 344,  label: 'Recruiting' },
+    hcm:        { checks: 412,  label: 'Core HCM' },
+    time:       { checks: 638,  label: 'Time Tracking' },
+    absence:    { checks: 507,  label: 'Absence' },
+    benefits:   { checks: 864,  label: 'Benefits' },
     payroll:    { checks: 1180, label: 'Payroll' },
-    carrier:    { checks: 96,  label: 'Carrier files', out: true },
-    bank:       { checks: 74,  label: 'Bank & tax',    out: true },
-    gl:         { checks: 118, label: 'General ledger', out: true }
+    comp:       { checks: 421,  label: 'Compensation' }
   };
+  // Outside it. Named, not measured: a check count on "time clocks" would be a number nobody
+  // counted, and the tenant is the thing being checked.
+  var EXTERNAL = {
+    applicant: { label: 'Applicant tracking' }, clocks: { label: 'Time clocks' },
+    carriers:  { label: 'Benefit carriers' },   bank:   { label: 'Bank and tax' },
+    carrier:   { label: 'Carrier files' },      gl:     { label: 'General ledger' }
+  };
+  var INSIDE = Object.keys(AREAS);
 
-  // What actually moves between them in a Workday estate. Weight is how much traffic a link
-  // carries, which is what sets particle density: a reader should be able to see that Core HCM
-  // into Payroll is a busier road than Recruiting into Core HCM.
+  // Three kinds of flow, and the distinction is the whole point of merging the two diagrams:
+  // what arrives, what moves between areas, and what leaves. An amber inside the tenant can now
+  // visibly stop something crossing the edge, which is what an HR executive actually feels.
   var LINKS = [
-    { a: 'recruiting', b: 'hcm',      w: 0.5, what: 'new hires' },
-    { a: 'hcm',        b: 'payroll',  w: 1.0, what: 'worker data' },
-    { a: 'hcm',        b: 'benefits', w: 0.7, what: 'eligibility' },
-    { a: 'hcm',        b: 'comp',     w: 0.5, what: 'job and grade' },
-    { a: 'time',       b: 'payroll',  w: 0.9, what: 'hours' },
-    { a: 'absence',    b: 'payroll',  w: 0.6, what: 'leave' },
-    { a: 'comp',       b: 'payroll',  w: 0.6, what: 'pay rates' },
-    { a: 'benefits',   b: 'payroll',  w: 0.7, what: 'deductions' },
-    { a: 'benefits',   b: 'carrier',  w: 0.6, what: 'elections' },
-    { a: 'payroll',    b: 'bank',     w: 0.8, what: 'payments' },
-    { a: 'payroll',    b: 'gl',       w: 0.6, what: 'postings' }
+    { a: 'applicant',  b: 'recruiting', w: 0.5, what: 'candidates',  edge: 'in' },
+    { a: 'clocks',     b: 'time',       w: 0.9, what: 'punches',     edge: 'in' },
+    { a: 'carriers',   b: 'benefits',   w: 0.5, what: 'confirmations', edge: 'in' },
+
+    { a: 'recruiting', b: 'hcm',        w: 0.5, what: 'new hires' },
+    { a: 'hcm',        b: 'payroll',    w: 1.0, what: 'worker data' },
+    { a: 'hcm',        b: 'benefits',   w: 0.7, what: 'eligibility' },
+    { a: 'hcm',        b: 'comp',       w: 0.5, what: 'job and grade' },
+    { a: 'time',       b: 'payroll',    w: 0.9, what: 'hours' },
+    { a: 'absence',    b: 'payroll',    w: 0.6, what: 'leave' },
+    { a: 'comp',       b: 'payroll',    w: 0.6, what: 'pay rates' },
+    { a: 'benefits',   b: 'payroll',    w: 0.7, what: 'deductions' },
+
+    { a: 'payroll',    b: 'bank',       w: 0.9, what: 'payments',  edge: 'out' },
+    { a: 'benefits',   b: 'carrier',    w: 0.6, what: 'elections', edge: 'out' },
+    { a: 'payroll',    b: 'gl',         w: 0.6, what: 'postings',  edge: 'out' }
   ];
 
-  // The two failures from chapter I, made visible on the thing they actually break.
   var RAISES = [
-    { area: 'payroll',  link: 'payroll>bank',     at: 0.40, close: 0.70,
+    { area: 'payroll',  link: 'payroll>bank',    at: 0.40, close: 0.70,
       cause: 'pay component maps to a retired earning', ledger: 'r1', week: 8 },
     { area: 'benefits', link: 'benefits>carrier', at: 0.52, close: 0.82,
       cause: 'carrier changed the file width at source', ledger: 'r2', week: 10 }
@@ -214,6 +224,7 @@
   }
 
   var CYCLE = { HOLD: 0.18, RUN: 0.28, CLOSE: 0.90 };
+  var lastRaiseKey = '';
 
   function paintEstate(p, t) {
     if (!ectx || !eW) return;
@@ -229,7 +240,37 @@
     });
     if (p >= CYCLE.CLOSE) ledgerClose('r4', 'week 12');
 
+    // A raised card is wider than a holding one, so the measured geometry is stale the moment the
+    // state changes. Re-measure then, and only then.
+    var raiseKey = Object.keys(raised).sort().join(',');
+    if (raiseKey !== lastRaiseKey) { lastRaiseKey = raiseKey; sizeEstate(); }
+
     ectx.clearRect(0, 0, eW, eH);
+
+    // The tenant, drawn as the boundary it is. Everything inside is Workday; everything outside
+    // is somebody else's system, and the line between them is what the chapter is about.
+    var bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    INSIDE.forEach(function (k) {
+      var q = pts[k];
+      if (!q) return;
+      bx0 = Math.min(bx0, q.x - q.w / 2); bx1 = Math.max(bx1, q.x + q.w / 2);
+      by0 = Math.min(by0, q.y - q.h / 2); by1 = Math.max(by1, q.y + q.h / 2);
+    });
+    if (bx1 > bx0) {
+      var pad = 26;
+      ectx.save();
+      ectx.strokeStyle = 'rgba(22,25,26,.30)';
+      ectx.lineWidth = 1.1;
+      ectx.beginPath();
+      if (ectx.roundRect) ectx.roundRect(bx0 - pad, by0 - pad, (bx1 - bx0) + pad * 2, (by1 - by0) + pad * 2, 10);
+      else ectx.rect(bx0 - pad, by0 - pad, (bx1 - bx0) + pad * 2, (by1 - by0) + pad * 2);
+      ectx.stroke();
+      ectx.font = '600 10px "IBM Plex Mono", ui-monospace, monospace';
+      ectx.fillStyle = 'rgba(22,25,26,.62)';
+      ectx.textAlign = 'left';
+      ectx.fillText('WORKDAY · ONE TENANT', bx0 - pad + 2, by0 - pad - 7);
+      ectx.restore();
+    }
 
     LINKS.forEach(function (l) {
       var A = pts[l.a], B = pts[l.b];
@@ -298,6 +339,13 @@
       });
       ectx.restore();
     }
+
+    Object.keys(EXTERNAL).forEach(function (k) {
+      var el = ndEls[k];
+      if (!el) return;
+      var i = el.querySelector('[data-c]');
+      if (i && !i.textContent) i.textContent = 'external system';
+    });
 
     Object.keys(AREAS).forEach(function (k) {
       var el = ndEls[k], a = AREAS[k];

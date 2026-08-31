@@ -98,18 +98,10 @@
   .ledger li.is-closed .lg-tx { text-decoration: line-through; text-decoration-color: var(--rule); }
   .ledger__stat { display: block; margin-top: var(--sc-3); padding-top: var(--sc-2); border-top: 1px solid var(--rule); color: var(--sc-ink); }
   @media (max-width: 1320px) {
-    /* The trail is the argument, so it is never hidden: it becomes a strip instead. */
-    .ledger {
-      left: 0; right: 0; top: auto; bottom: 0; width: auto; transform: none;
-      display: flex; align-items: baseline; gap: var(--sc-3); overflow: hidden;
-      padding: .5em var(--sc-gutter); border-left: 0; border-top: 1px solid var(--rule);
-      background: color-mix(in oklab, var(--paper-2) 92%, transparent);
-      backdrop-filter: blur(8px);
-    }
-    .ledger ol { display: flex; gap: var(--sc-3); flex: 1 1 auto; overflow: hidden; }
-    .ledger li { grid-template-columns: .9rem auto; white-space: nowrap; }
-    .ledger .lg-st { display: none; }
-    .ledger__stat { margin: 0 0 0 auto; padding: 0; border: 0; white-space: nowrap; }
+    /* The trail is marginalia or it is nothing. Collapsed into a bottom strip it read as an error
+       bar or a cookie banner: a run of half sentences with no room to be a record. Without a
+       margin to live in, it does not appear. */
+    .ledger { display: none; }
   }
 
   .masthead {
@@ -189,7 +181,6 @@
     background: rgba(22,25,26,.18);
   }
   .nd.is-hub::before { background: var(--sc-accent); }
-  .nd.is-out::before { background: repeating-linear-gradient(90deg, rgba(22,25,26,.22) 0 3px, transparent 3px 6px); }
   .nd.is-raised::before { background: var(--watch); }
   .nd.is-fixed::before { background: var(--ok); }
   .nd b { font-size: var(--sc-t-sm); font-weight: 600; letter-spacing: -.01em; }
@@ -197,8 +188,10 @@
           font-variant-numeric: tabular-nums; color: var(--sc-ink-soft); letter-spacing: .03em; }
   .nd.is-hub { border-color: color-mix(in oklab, var(--sc-ink) 34%, transparent); box-shadow: var(--sc-e2); }
   .nd.is-hub b { font-size: var(--sc-t-base); }
-  .nd.is-out { background: var(--sc-canvas); border-style: dashed; }
-  .nd.is-out b { font-weight: 400; color: var(--sc-ink-soft); }
+  /* Outside the tenant: dashed, quieter, and never a hub. */
+  .nd.is-ext { background: var(--sc-canvas); border-style: dashed; }
+  .nd.is-ext b { font-weight: 400; color: var(--sc-ink-soft); }
+  .nd.is-ext::before { background: repeating-linear-gradient(90deg, rgba(22,25,26,.22) 0 3px, transparent 3px 6px); }
   .nd.is-raised { border-color: var(--watch); background: color-mix(in oklab, var(--watch) 9%, var(--paper-2)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--watch) 16%, transparent); }
   .nd.is-raised i { color: var(--watch); }
   .nd.is-fixed { border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 14%, transparent); }
@@ -208,7 +201,8 @@
                  border-top: 1px solid var(--rule); font-family: var(--sc-font-mono);
                  font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
   .estate-foot b { color: var(--sc-ink); font-weight: 500; font-variant-numeric: tabular-nums; }
-  #estateNote { margin-left: auto; }
+  #estateNote { margin-left: auto; padding-right: 14rem; }
+  @media (max-width: 1320px) { #estateNote { padding-right: 0; } }
 
   /* ── chapter IV: media in its own column, with a caption. Never under the type. ─────────── */
   /* Chapter IV is the one dark chapter. A hard ground cut is what a chaptered page does, and it
@@ -313,7 +307,7 @@
     <div class="sheet" data-sc-in data-sc-stagger="90">
       <p class="eyebrow">Workday consulting practice</p>
       <h1 class="title">The whole of Workday, run by people who have done it before.</h1>
-      <p class="lede">Atlas AI Consulting is a <b>full scope Workday practice</b>. Core HCM, Payroll, Benefits, Absence, Time, Recruiting, Compensation and Financials, delivered by senior consultants using tooling we built ourselves. On time, to budget, and with an audit line behind every change.</p>
+      <p class="lede">Atlas AI Consulting is a <b>full scope Workday practice</b>. Core HCM, Payroll, Benefits, Absence, Time, Recruiting and Compensation, delivered by senior consultants using tooling we built ourselves. On time, to budget, and with an audit line behind every change.</p>
     </div>
   </section>
 
@@ -353,7 +347,6 @@
             <li><b>Time Tracking</b> and scheduling</li>
             <li><b>Recruiting</b> and onboarding</li>
             <li><b>Compensation</b> and merit cycles</li>
-            <li><b>Financials</b> at the HCM boundary</li>
             <li><b>Reporting</b>, dashboards and prompts</li>
             <li><b>Integrations</b>, inbound and outbound</li>
             <li><b>Security</b> and domain review</li>
@@ -374,23 +367,29 @@
     <div data-sc-stage>
       <div class="estate-stage">
         <div class="estate-head">
-          <p class="eyebrow" style="margin:0"><b>Chapter III</b> · every functional area, and what moves between them</p>
+          <p class="eyebrow" style="margin:0"><b>Chapter III</b> · one tenant, its functional areas, and everything that crosses the edge</p>
           <h2 class="ch" style="margin:0">Your estate does not sit still, so neither does the watching.</h2>
           <p class="estate-clock"><span id="boardPhase">monitoring</span> · <b id="boardClock">week 0</b></p>
         </div>
 
         <div class="estate" id="estate">
           <canvas id="estateCanvas" aria-hidden="true"></canvas>
-          <div class="nd" data-k="recruiting"   style="left:9%;  top:16%"><b>Recruiting</b><i data-c></i></div>
-          <div class="nd" data-k="time"         style="left:9%;  top:50%"><b>Time Tracking</b><i data-c></i></div>
-          <div class="nd" data-k="absence"      style="left:9%;  top:84%"><b>Absence</b><i data-c></i></div>
-          <div class="nd is-hub" data-k="hcm"   style="left:33%; top:33%"><b>Core HCM</b><i data-c></i></div>
-          <div class="nd" data-k="comp"         style="left:33%; top:82%"><b>Compensation</b><i data-c></i></div>
-          <div class="nd" data-k="benefits"     style="left:58%; top:17%"><b>Benefits</b><i data-c></i></div>
-          <div class="nd is-hub" data-k="payroll" style="left:58%; top:58%"><b>Payroll</b><i data-c></i></div>
-          <div class="nd is-out" data-k="carrier" style="left:85%; top:22%"><b>Carrier files</b><i data-c></i></div>
-          <div class="nd is-out" data-k="bank"    style="left:85%; top:55%"><b>Bank &amp; tax</b><i data-c></i></div>
-          <div class="nd is-out" data-k="gl"      style="left:85%; top:86%"><b>General ledger</b><i data-c></i></div>
+
+          <div class="nd is-ext" data-k="applicant" style="left:7%;  top:20%"><b>Applicant tracking</b><i data-c></i></div>
+          <div class="nd is-ext" data-k="clocks"    style="left:7%;  top:52%"><b>Time clocks</b><i data-c></i></div>
+          <div class="nd is-ext" data-k="carriers"  style="left:7%;  top:84%"><b>Benefit carriers</b><i data-c></i></div>
+
+          <div class="nd" data-k="recruiting"   style="left:32%; top:16%"><b>Recruiting</b><i data-c></i></div>
+          <div class="nd is-hub" data-k="hcm"   style="left:36%; top:44%"><b>Core HCM</b><i data-c></i></div>
+          <div class="nd" data-k="time"         style="left:31%; top:70%"><b>Time Tracking</b><i data-c></i></div>
+          <div class="nd" data-k="absence"      style="left:38%; top:92%"><b>Absence</b><i data-c></i></div>
+          <div class="nd" data-k="benefits"     style="left:59%; top:16%"><b>Benefits</b><i data-c></i></div>
+          <div class="nd is-hub" data-k="payroll" style="left:62%; top:56%"><b>Payroll</b><i data-c></i></div>
+          <div class="nd" data-k="comp"         style="left:57%; top:90%"><b>Compensation</b><i data-c></i></div>
+
+          <div class="nd is-ext" data-k="bank"    style="left:92%; top:28%"><b>Bank &amp; tax</b><i data-c></i></div>
+          <div class="nd is-ext" data-k="carrier" style="left:92%; top:58%"><b>Carrier files</b><i data-c></i></div>
+          <div class="nd is-ext" data-k="gl"      style="left:92%; top:86%"><b>General ledger</b><i data-c></i></div>
         </div>
 
         <div class="estate-foot">
