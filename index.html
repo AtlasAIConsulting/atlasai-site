@@ -43,6 +43,38 @@
   }
 
   body { background: var(--sc-canvas); color: var(--sc-ink); font-family: var(--sc-font-text); }
+
+  /* The whole site is one window onto a single chart. It sits behind everything and is never
+     interactive; the content rides above it. */
+  #sheet { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  main, .masthead, .ledger, .sheet-margin { position: relative; z-index: 1; }
+
+  /* Marginalia. A printed sheet says what its marks mean, and this is the single fastest way a
+     reader decides the page was made by people who measure things. */
+  .sheet-margin {
+    position: fixed; z-index: 2; pointer-events: none;
+    font-family: var(--sc-font-mono); font-size: 9px; line-height: 1.55; color: var(--sc-ink-soft);
+  }
+  .sheet-legend { right: var(--sc-4); bottom: var(--sc-4); display: grid; gap: 1px;
+                  padding: var(--sc-3); border: 1px solid rgba(22,25,26,.22);
+                  background: rgba(243,244,241,.82); }
+  .sheet-legend b { color: var(--sc-ink); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+  .sheet-legend i { display: inline-block; width: 16px; margin-right: .5em; vertical-align: 1px; }
+  .lg-tri { border-left: 4px solid transparent; border-right: 4px solid transparent;
+            border-bottom: 7px solid rgba(22,25,26,.55); width: 0 !important; margin-right: 1em !important; }
+  .lg-solid { border-top: 1px solid rgba(22,25,26,.55); }
+  .lg-dash { border-top: 1px dashed rgba(22,25,26,.55); }
+
+  .sheet-scale { left: var(--sc-4); bottom: var(--sc-4); display: grid; gap: .35em; justify-items: start; }
+  .sheet-scale .bar { display: flex; width: 120px; height: 6px; border: 1px solid rgba(22,25,26,.5); }
+  .sheet-scale .bar span { flex: 1; }
+  .sheet-scale .bar span:nth-child(odd) { background: rgba(22,25,26,.6); }
+  .sheet-scale .ticks { display: flex; justify-content: space-between; width: 124px; }
+  .sheet-north { display: flex; align-items: center; gap: .4em; margin-top: .3em; }
+  .sheet-north em { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent;
+                    border-bottom: 11px solid rgba(22,25,26,.62); }
+  .sheet-north span { font-family: var(--sc-font-display); font-size: 11px; color: var(--sc-ink); }
+  @media (max-width: 1320px) { .sheet-margin { display: none; } }
   ::selection { background: color-mix(in oklab, var(--sc-accent) 22%, transparent); }
 
   /* ── the ledger: the page's own audit trail, kept in the margin ─────────────────────────── */
@@ -93,8 +125,8 @@
 
   /* ── chapters: hard cuts between grounds, never an interpolation ────────────────────────── */
   .chapter { padding: var(--sc-section) 0; }
-  .chapter--paper { background: var(--sc-canvas); }
-  .chapter--white { background: var(--paper-2); border-block: 1px solid var(--rule-soft); }
+  .chapter--paper { background: transparent; }
+  .chapter--white { background: rgba(255,255,255,.72); border-block: 1px solid var(--rule-soft); }
   .sheet { width: 100%; max-width: 74rem; margin-inline: auto; padding-inline: var(--sc-gutter); }
 
   .eyebrow {
@@ -177,6 +209,15 @@
   .evidence b { color: var(--sc-ink); font-weight: 500; }
 
   /* ── the colophon: the CTA is a line of running text, not a button island ───────────────── */
+  .survey-stamp {
+    display: inline-block; margin-top: var(--sc-5); padding: .5em .9em;
+    border: 1px solid var(--sc-accent); color: var(--sc-accent);
+    font-family: var(--sc-font-mono); font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase;
+    transform: rotate(-3deg) scale(1.04); opacity: 0;
+    transition: opacity .4s ease, transform .4s cubic-bezier(.22,.61,.36,1);
+  }
+  .survey-stamp.is-on { opacity: 1; transform: rotate(-3deg) scale(1); }
+  @media (prefers-reduced-motion: reduce) { .survey-stamp { transition: none; } }
   .colophon { border-top: 2px solid var(--sc-ink); padding-top: var(--sc-5); padding-bottom: var(--sc-6); }
   .colophon p.say { max-width: 34ch; margin: 0 0 var(--sc-5); font-family: var(--sc-font-display); font-size: var(--sc-t-xl); line-height: var(--sc-leading-tight); }
   .colophon a { color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
@@ -208,6 +249,15 @@
 <body>
 
 <span data-sc-progress></span>
+
+<canvas id="sheet" aria-hidden="true"></canvas>
+
+<div class="sheet-margin sheet-legend" id="sheetLegend" aria-hidden="true"></div>
+<div class="sheet-margin sheet-scale" aria-hidden="true">
+  <div class="bar"><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="ticks"><span>0</span><span>500</span><span>1,000</span></div>
+  <div class="sheet-north"><em></em><span>N</span></div>
+</div>
 
 <div class="masthead">
   <b>Atlas AI Consulting</b> <span>Workday practice</span>
@@ -347,6 +397,7 @@
     <div class="sheet colophon" data-sc-in data-sc-stagger="80">
       <p class="say">Bring us the functional area you are least sure about. We will tell you what we find, and what it would take to hold it.</p>
       <p class="body">A working session is one conversation about one area with a senior consultant who has run it before. There is no deck. Write to <a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a> and say which area it is.</p>
+      <div class="survey-stamp" id="surveyStamp" aria-hidden="true">Surveyed · complete · 2026 · sheet 1 of 1 · Atlas AI Consulting</div>
       <div class="imprint">
         <span><b>Atlas AI Consulting</b><br>Workday consulting practice</span>
         <span><a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a></span>
@@ -357,6 +408,7 @@
 
 </main>
 
+<script src="sheet.js"></script>
 <script src="scrollcraft.js"></script>
 <script src="site.js"></script>
 <script>ScrollCraft.mount(document.body);</script>
