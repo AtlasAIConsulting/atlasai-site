@@ -104,24 +104,53 @@
     .ledger { display: none; }
   }
 
+  /* ── the nameplate ────────────────────────────────────────────────────────────────────────
+     Every other small element on this page speaks in one voice: mono, uppercase, tracked, soft —
+     the station labels, the margin notes, the survey stamp. The company name was set in that same
+     recipe, so typographically it WAS an annotation and it read like one. It now takes the display
+     serif the page reserves for headlines, at a size no caption uses, on a paper plate so the
+     contour lines never run behind the letters. */
   .masthead {
     position: fixed; z-index: 20; inset: 0 0 auto 0;
-    display: flex; align-items: baseline; gap: var(--sc-3);
-    padding: var(--sc-2) var(--sc-gutter);
-    font-family: var(--sc-font-mono); font-size: var(--sc-t-xs);
-    letter-spacing: var(--sc-track-wide); text-transform: uppercase;
-    color: var(--sc-ink-soft);
+    display: flex; align-items: center; gap: .9rem;
+    padding: .8rem var(--sc-gutter) 1.7rem;
+    background: linear-gradient(180deg, var(--sc-canvas) 0 60%, rgba(243, 244, 241, 0) 100%);
   }
+  .nameplate { display: flex; flex-direction: column; gap: .32rem; min-width: 0; }
+  .nameplate .nm {
+    font-family: var(--sc-font-display); font-weight: 600;
+    font-size: clamp(1.3rem, 1.05rem + 1.1vw, 1.95rem); line-height: 1;
+    letter-spacing: -.015em; color: var(--sc-ink); white-space: nowrap;
+  }
+  /* The qualifier stays in the annotation voice on purpose — that contrast is what makes the
+     name above it read as the name. The accent tick is the only colour in the lockup. */
+  .nameplate .qual {
+    display: flex; align-items: center; gap: .5rem;
+    font-family: var(--sc-font-mono); font-size: .62rem; line-height: 1;
+    letter-spacing: .17em; text-transform: uppercase; color: var(--sc-ink-soft);
+  }
+  .nameplate .qual::before { content: ""; flex: 0 0 auto; width: 1.2rem; height: 2px; background: var(--sc-accent); }
+
   /* The mark, redrawn in the page's own palette rather than embedded as artwork: navy becomes
      ink, the ribbon takes the teal already carrying inbound data on the diagram, and the node is
      the accent. It stays sharp at any size and costs nothing to load. */
-  .mark { height: 30px; width: auto; flex: 0 0 auto; }
+  .mark { height: 46px; width: auto; flex: 0 0 auto; }
   .mark .mark-solid { fill: var(--sc-ink); }
   .mark .mark-flow { stroke: #0E7490; stroke-width: 3.4; }
   .mark .mark-node { fill: var(--sc-accent); }
-  .mark--lg { height: 52px; margin-bottom: var(--sc-3); }
-  .masthead b { color: var(--sc-ink); font-weight: 500; }
-  .masthead a { margin-left: auto; color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+  .mark--lg { height: 72px; margin-bottom: var(--sc-3); }
+  .masthead a {
+    margin-left: auto; align-self: center; white-space: nowrap;
+    font-family: var(--sc-font-mono); font-size: var(--sc-t-xs);
+    letter-spacing: var(--sc-track-wide); text-transform: uppercase;
+    color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor;
+  }
+  /* Below this the lockup and the call to action cannot both fit on one line. The name wins —
+     the colophon still carries the same invitation and the same address. */
+  @media (max-width: 640px) {
+    .masthead a { display: none; }
+    .mark { height: 34px; }
+  }
 
   /* ── chapters: hard cuts between grounds, never an interpolation ────────────────────────── */
   .chapter { padding: var(--sc-section) 0; }
@@ -219,6 +248,7 @@
   .colophon a { color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
   .colophon a:focus-visible, .masthead a:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 3px; }
   .powered { color: var(--sc-accent); letter-spacing: .04em; }
+  .imprint .nm { display: inline-block; margin-bottom: .18rem; font-family: var(--sc-font-display); font-size: 1.35rem; font-weight: 600; letter-spacing: -.015em; line-height: 1; color: var(--sc-ink); }
   .imprint { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--sc-4); margin-top: var(--sc-6); padding-top: var(--sc-4); border-top: 1px solid var(--rule); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.6; color: var(--sc-ink-soft); }
 
   /* The CONTENT is offset to leave the margin the ledger lives in, the way a printed page with
@@ -226,7 +256,7 @@
      query earlier in the stylesheet loses to a later `padding` shorthand, which is why the
      ledger kept printing over the page. */
   @media (min-width: 1321px) {
-    .sheet, .estate-stage, .masthead { padding-left: calc(var(--sc-gutter) + 15rem); }
+    .sheet, .estate-stage { padding-left: calc(var(--sc-gutter) + 15rem); }
   }
 
   @media (max-width: 900px) {
@@ -272,7 +302,10 @@
       <path d="M121 16 100 26v22l21-10z" opacity=".82"/>
     </g>
   </svg>
-  <b>Atlas AI Consulting</b> <span>Workday practice</span>
+  <span class="nameplate">
+    <span class="nm">Atlas AI Consulting</span>
+    <span class="qual">Workday practice</span>
+  </span>
   <a href="#engage">Book a working session</a>
 </div>
 
@@ -415,7 +448,7 @@
             <path d="M100 3 121 13l-21 10-21-10z"/><path d="M79 16 100 26v22L79 38z"/>
             <path d="M121 16 100 26v22l21-10z" opacity=".82"/>
           </g>
-        </svg><br><b>Atlas AI Consulting</b><br>Workday consulting practice<br><span class="powered">Powered by Alpaca Tools&trade;</span></span>
+        </svg><br><b class="nm">Atlas AI Consulting</b><br>Workday consulting practice<br><span class="powered">Powered by Alpaca Tools&trade;</span></span>
         <span><a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a></span>
         <span>Workday is a trademark of Workday, Inc. We are not affiliated with, sponsored by, or endorsed by Workday.</span>
       </div>
