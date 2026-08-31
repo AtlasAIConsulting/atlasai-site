@@ -332,19 +332,17 @@
     }
   }
 
-  /* ══ 3 · THE DEPENDENCY CANOPY ══════════════════════════════════════════════════════════════
-     One dark chapter in a paper document. The page stays light because an executive is reading it;
-     this single section becomes a lit screen, which is what a hard ground cut in a chaptered page
-     is for.
+  /* ══ 3 · THE BOUNDARY ═══════════════════════════════════════════════════════════════════════
+     One tenant in the middle, and everything that crosses its edge.
 
-     A perspective plane recedes to a horizon. Every Workday functional area stands on it as a
-     labelled control point, and from each one a fan of dependencies rises into a canopy overhead.
-     The labels are the real areas and the figures beside them are the real check counts, because
-     a visualisation that says DATABASE_10 is a stock image and this one has to be the estate.
+     Chapter III is what happens INSIDE Workday: functional areas and the flows between them.
+     This is the boundary: what arrives, and what leaves. An HR executive recognises this picture
+     immediately, because it is the diagram they are shown in every integration conversation, and
+     the one nobody ever keeps up to date.
 
-     Colour runs cyan to magenta across the estate, which is the reference's language, and is used
-     here for one honest purpose: hue separates one area's dependencies from another's where the
-     fans overlap. */
+     No invented figures. The systems here are named, not measured: putting a check count on
+     "background checks" would be a number nobody counted, and this page has been careful about
+     that everywhere else. */
 
   var abg = document.getElementById('atlasBg');
   var actx = abg ? abg.getContext('2d') : null;
@@ -353,112 +351,131 @@
     return function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
   }
 
-  // near z = 0, far z = 1
-  var CANOPY = [
-    { id: 'CORE_HCM',       n: 412,  x: -1.02, z: 0.30 },
-    { id: 'RECRUITING',     n: 344,  x: -0.74, z: 0.22 },
-    { id: 'TIME_TRACKING',  n: 638,  x: -0.47, z: 0.15 },
-    { id: 'ABSENCE',        n: 507,  x: -0.22, z: 0.08 },
-    { id: 'PAYROLL',        n: 1180, x:  0.02, z: 0.03 },
-    { id: 'BENEFITS',       n: 864,  x:  0.26, z: 0.08 },
-    { id: 'COMPENSATION',   n: 421,  x:  0.51, z: 0.15 },
-    { id: 'FINANCIALS',     n: 289,  x:  0.78, z: 0.22 },
-    { id: 'CARRIER_FILES',  n: 96,   x:  1.04, z: 0.30 }
+  var INBOUND = [
+    { id: 'Applicant tracking',  w: 0.8 },
+    { id: 'Time clocks',         w: 1.0 },
+    { id: 'Benefit carriers',    w: 0.7 },
+    { id: 'Learning',            w: 0.5 },
+    { id: 'Background checks',   w: 0.4 },
+    { id: 'Expense',             w: 0.5 }
+  ];
+  var OUTBOUND = [
+    { id: 'Payroll bank file',   w: 1.0 },
+    { id: 'Tax filing',          w: 0.7 },
+    { id: 'Carrier files',       w: 0.8 },
+    { id: 'General ledger',      w: 0.7 },
+    { id: 'Reporting',           w: 0.6 },
+    { id: 'Badge and access',    w: 0.4 }
   ];
 
-  var FANS = (function () {
-    var r = rng(70141), out = [];
-    CANOPY.forEach(function (a, i) {
-      // A busier area throws more dependencies. The count is the real one, so the density is too.
-      var k = 12 + Math.round(a.n / 42);
-      var arcs = [];
-      for (var q = 0; q < k; q++) {
-        var spread = (q / (k - 1) - 0.5);
-        arcs.push({
-          sx: spread * (0.55 + r() * 0.5),          // where it lands in the canopy
-          sy: 0.02 + r() * 0.10,                    // canopy height band
-          bow: 0.35 + r() * 0.3,
-          u: r(), v: 0.07 + r() * 0.16
-        });
-      }
-      out.push({ area: a, arcs: arcs, hue: i / (CANOPY.length - 1) });
+  // Deeper than the reference's neon, because that was calibrated for a black ground and this one
+  // is paper. Teal for what arrives, violet for what leaves: direction has a colour, so a reader
+  // can tell inbound from outbound without following a line to its end.
+  var IN_C = '14,116,144', OUT_C = '124,45,182';
+
+  var aW = 0, aH = 0, aDpr = 1, aPlate = null, aVisible = false, HUB = null;
+
+  function layout() {
+    HUB = { x: aW * 0.5, y: aH * 0.52, r: Math.max(46, Math.min(78, aW * 0.052)) };
+    var spanY = aH * 0.74, top = aH * 0.13;
+    INBOUND.forEach(function (s, i) {
+      s.x = aW * 0.13;
+      s.y = top + (i / (INBOUND.length - 1)) * spanY;
+      s.c1 = { x: aW * 0.34, y: s.y };
+      s.c2 = { x: aW * 0.40, y: HUB.y };
+      s.tx = HUB.x - HUB.r - 4; s.ty = HUB.y;
+    });
+    OUTBOUND.forEach(function (s, i) {
+      s.x = aW * 0.87;
+      s.y = top + (i / (OUTBOUND.length - 1)) * spanY;
+      s.c1 = { x: aW * 0.60, y: HUB.y };
+      s.c2 = { x: aW * 0.66, y: s.y };
+      s.fx = HUB.x + HUB.r + 4; s.fy = HUB.y;
+    });
+  }
+
+  var PARTICLES = (function () {
+    var r = rng(31337), out = [];
+    INBOUND.forEach(function (s) {
+      var n = 5 + Math.round(s.w * 7);
+      // Slow. Data crossing a tenant boundary is not a light show, and a slower particle is
+      // easier to follow from one end of its path to the other.
+      for (var i = 0; i < n; i++) out.push({ s: s, dir: 'in', u: r(), v: 0.026 + r() * 0.022 });
+    });
+    OUTBOUND.forEach(function (s) {
+      var n = 5 + Math.round(s.w * 7);
+      for (var i = 0; i < n; i++) out.push({ s: s, dir: 'out', u: r(), v: 0.026 + r() * 0.022 });
     });
     return out;
   })();
 
-  function hue(t, alpha) {
-    // cyan #22D3EE to magenta #E879F9
-    var r = Math.round(34 + (232 - 34) * t);
-    var g = Math.round(211 + (121 - 211) * t);
-    var b = Math.round(238 + (249 - 238) * t);
-    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  function bez(a, c1, c2, b, u) {
+    var m = 1 - u, m2 = m * m, u2 = u * u;
+    return {
+      x: m2 * m * a.x + 3 * m2 * u * c1.x + 3 * m * u2 * c2.x + u2 * u * b.x,
+      y: m2 * m * a.y + 3 * m2 * u * c1.y + 3 * m * u2 * c2.y + u2 * u * b.y
+    };
+  }
+  function pathOf(p) {
+    var s = p.s;
+    return p.dir === 'in'
+      ? { a: { x: s.x, y: s.y }, c1: s.c1, c2: s.c2, b: { x: s.tx, y: s.ty } }
+      : { a: { x: s.fx, y: s.fy }, c1: s.c1, c2: s.c2, b: { x: s.x, y: s.y } };
   }
 
-  var aW = 0, aH = 0, aDpr = 1, aPlate = null, aVisible = false, HORIZON = 0;
-
-  function project(x, z) {
-    var pers = 1 / (1 + z * 1.7);
-    return { x: aW / 2 + x * pers * aW * 0.62, y: HORIZON + pers * (aH * 0.82 - HORIZON), p: pers };
-  }
-  function canopyPoint(f, arc) {
-    return { x: aW / 2 + (f.area.x * 0.35 + arc.sx) * aW * 0.62, y: aH * arc.sy };
-  }
-
-  function buildCanopyPlate() {
+  function buildPlate() {
     aPlate = document.createElement('canvas');
     aPlate.width = Math.round(aW * aDpr); aPlate.height = Math.round(aH * aDpr);
     var g = aPlate.getContext('2d');
     g.setTransform(aDpr, 0, 0, aDpr, 0, 0);
-    g.fillStyle = '#04101F'; g.fillRect(0, 0, aW, aH);
-
-    // ground haze and scattered readings
-    var r = rng(5150);
-    for (var i = 0; i < 420; i++) {
-      var z = r(), x = (r() - 0.5) * 2.2;
-      var P = project(x, z);
-      if (P.y > aH || P.y < HORIZON) continue;
-      g.fillStyle = hue(r(), 0.05 + r() * 0.22);
-      g.beginPath(); g.arc(P.x, P.y + (r() - 0.5) * 26, 0.6 + r() * 1.5, 0, 6.284); g.fill();
-    }
-
     g.lineCap = 'round';
-    FANS.forEach(function (f) {
-      var base = project(f.area.x, f.area.z);
-      f._base = base;
-      f.arcs.forEach(function (arc) {
-        var top = canopyPoint(f, arc);
-        arc._a = base; arc._b = top;
-        arc._c1 = { x: base.x + (top.x - base.x) * 0.06, y: base.y - (base.y - top.y) * arc.bow };
-        arc._c2 = { x: top.x - (top.x - base.x) * 0.10, y: top.y + (base.y - top.y) * 0.12 };
-        g.strokeStyle = hue(f.hue, 0.30 * base.p + 0.10);
-        g.lineWidth = 0.55 + base.p * 0.5;
+
+    function drawSide(list, dir, col) {
+      list.forEach(function (s) {
+        var P = pathOf({ s: s, dir: dir });
+        g.strokeStyle = 'rgba(' + col + ',' + (0.13 + s.w * 0.16) + ')';
+        g.lineWidth = 0.7 + s.w * 1.5;
         g.beginPath();
-        g.moveTo(base.x, base.y);
-        g.bezierCurveTo(arc._c1.x, arc._c1.y, arc._c2.x, arc._c2.y, top.x, top.y);
+        g.moveTo(P.a.x, P.a.y);
+        g.bezierCurveTo(P.c1.x, P.c1.y, P.c2.x, P.c2.y, P.b.x, P.b.y);
         g.stroke();
+
+        // the system, named
+        g.save();
+        g.fillStyle = 'rgba(' + col + ',.95)';
+        g.beginPath(); g.arc(s.x, s.y, 3.4, 0, 6.284); g.fill();
+        g.font = '500 11px "IBM Plex Mono", ui-monospace, monospace';
+        g.fillStyle = 'rgba(22,25,26,.72)';
+        g.textAlign = dir === 'in' ? 'right' : 'left';
+        g.fillText(s.id, s.x + (dir === 'in' ? -10 : 10), s.y + 3.5);
+        g.restore();
       });
-    });
+    }
+    drawSide(INBOUND, 'in', IN_C);
+    drawSide(OUTBOUND, 'out', OUT_C);
 
-    // control points and their labels, set along the sight line like the survey's stations
-    FANS.forEach(function (f) {
-      var b = f._base;
-      g.save();
-      g.strokeStyle = hue(f.hue, 0.95); g.lineWidth = 1.1;
-      g.beginPath();
-      g.moveTo(b.x, b.y - 5); g.lineTo(b.x + 5, b.y); g.lineTo(b.x, b.y + 5); g.lineTo(b.x - 5, b.y);
-      g.closePath(); g.stroke();
-      g.fillStyle = hue(f.hue, 0.55); g.fill();
+    // the tenant
+    g.save();
+    g.beginPath(); g.arc(HUB.x, HUB.y, HUB.r, 0, 6.284);
+    g.fillStyle = 'rgba(255,255,255,.96)'; g.fill();
+    g.strokeStyle = 'rgba(22,25,26,.75)'; g.lineWidth = 1.4; g.stroke();
+    g.beginPath(); g.arc(HUB.x, HUB.y, HUB.r + 7, 0, 6.284);
+    g.strokeStyle = 'rgba(22,25,26,.16)'; g.lineWidth = 1; g.stroke();
+    g.textAlign = 'center';
+    g.fillStyle = '#16191A';
+    g.font = '600 17px "Source Sans 3", system-ui, sans-serif';
+    g.fillText('Workday', HUB.x, HUB.y - 1);
+    g.font = '10px "IBM Plex Mono", ui-monospace, monospace';
+    g.fillStyle = 'rgba(22,25,26,.5)';
+    g.fillText('one tenant', HUB.x, HUB.y + 15);
+    g.restore();
 
-      g.translate(b.x - 7, b.y - 12);
-      g.rotate(-Math.PI / 2.9);
-      g.font = '9.5px "IBM Plex Mono", ui-monospace, monospace';
-      g.fillStyle = hue(f.hue, 0.9);
-      g.fillText(f.area.id, 0, 0);
-      g.fillStyle = 'rgba(226,240,248,.42)';
-      g.fillText(f.area.n.toLocaleString('en-US') + ' checks', 0, 12);
-      g.restore();
-    });
-    return g;
+    // which way is which, said once
+    g.font = '10px "IBM Plex Mono", ui-monospace, monospace';
+    g.fillStyle = 'rgba(' + IN_C + ',.85)';
+    g.textAlign = 'left'; g.fillText('INBOUND', aW * 0.045, aH * 0.06);
+    g.fillStyle = 'rgba(' + OUT_C + ',.85)';
+    g.textAlign = 'right'; g.fillText('OUTBOUND', aW * 0.955, aH * 0.06);
   }
 
   function sizeAtlas() {
@@ -469,16 +486,8 @@
     aW = Math.round(r.width); aH = Math.round(r.height);
     abg.width = Math.round(aW * aDpr); abg.height = Math.round(aH * aDpr);
     actx.setTransform(aDpr, 0, 0, aDpr, 0, 0);
-    HORIZON = aH * 0.05;
-    buildCanopyPlate();
-  }
-
-  function bez(a, c1, c2, b, u) {
-    var m = 1 - u, m2 = m * m, u2 = u * u;
-    return {
-      x: m2 * m * a.x + 3 * m2 * u * c1.x + 3 * m * u2 * c2.x + u2 * u * b.x,
-      y: m2 * m * a.y + 3 * m2 * u * c1.y + 3 * m * u2 * c2.y + u2 * u * b.y
-    };
+    layout();
+    buildPlate();
   }
 
   function paintAtlas(t) {
@@ -490,22 +499,17 @@
     if (reduce) return;
 
     var secs = t / 1000;
-    actx.save();
-    actx.globalCompositeOperation = 'lighter';        // additive, which is what makes it glow
-    FANS.forEach(function (f) {
-      f.arcs.forEach(function (arc) {
-        if (!arc._a) return;
-        var u = (arc.u + secs * arc.v) % 1;
-        for (var k = 0; k < 5; k++) {
-          var uu = u - k * 0.02;
-          if (uu < 0) break;
-          var P = bez(arc._a, arc._c1, arc._c2, arc._b, uu);
-          actx.fillStyle = hue(f.hue, (0.5 - k * 0.09) * (0.5 + f._base.p * 0.6));
-          actx.beginPath(); actx.arc(P.x, P.y, 1.7 - k * 0.28, 0, 6.284); actx.fill();
-        }
-      });
+    PARTICLES.forEach(function (p) {
+      var P = pathOf(p), col = p.dir === 'in' ? IN_C : OUT_C;
+      var u = (p.u + secs * p.v) % 1;
+      for (var k = 0; k < 4; k++) {
+        var uu = u - k * 0.012;
+        if (uu < 0) break;
+        var pt = bez(P.a, P.c1, P.c2, P.b, uu);
+        actx.fillStyle = 'rgba(' + col + ',' + (0.85 - k * 0.19) + ')';
+        actx.beginPath(); actx.arc(pt.x, pt.y, 2.3 - k * 0.42, 0, 6.284); actx.fill();
+      }
     });
-    actx.restore();
   }
 
   if (abg && 'IntersectionObserver' in window) {
