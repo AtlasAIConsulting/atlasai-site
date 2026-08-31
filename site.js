@@ -260,16 +260,43 @@
     });
 
     if (!reduce) {
+      // Tapered streaks, not dots. A dot travelling a line reads as a dot; a streak reads as
+      // motion, and four stacked circles of falling radius cost less than a gradient stroke.
+      ectx.save();
       PARTS.forEach(function (q) {
         var l = q.l;
         if (!l._a || stalled[l.id]) return;          // a stalled flow is a flow that STOPPED
         var u = (q.u + secs * q.v) % 1;
-        var x = l._a.x + (l._b.x - l._a.x) * u, y = l._a.y + (l._b.y - l._a.y) * u;
-        ectx.save();
-        ectx.fillStyle = 'rgba(184,67,30,.85)';
-        ectx.beginPath(); ectx.arc(x, y, 1.9, 0, Math.PI * 2); ectx.fill();
-        ectx.restore();
+        var dx = l._b.x - l._a.x, dy = l._b.y - l._a.y;
+        for (var k = 0; k < 5; k++) {
+          var uu = u - k * 0.016;
+          if (uu < 0) break;
+          ectx.fillStyle = 'rgba(184,67,30,' + (0.9 - k * 0.17) + ')';
+          ectx.beginPath();
+          ectx.arc(l._a.x + dx * uu, l._a.y + dy * uu, 2.1 - k * 0.34, 0, Math.PI * 2);
+          ectx.fill();
+        }
       });
+      ectx.restore();
+
+      // One bright pulse runs the length of every live link on a slow cycle, so the diagram has a
+      // heartbeat rather than only traffic.
+      ectx.save();
+      LINKS.forEach(function (l, i) {
+        if (!l._a || stalled[l.id]) return;
+        var pu = ((secs * 0.34) + i * 0.11) % 1;
+        var g = 1 - Math.abs(pu - 0.5) * 2;
+        ectx.globalAlpha = g * g * 0.5;
+        ectx.strokeStyle = 'rgba(184,67,30,1)';
+        ectx.lineWidth = 1.6;
+        var sx = l._a.x + (l._b.x - l._a.x) * Math.max(0, pu - 0.12);
+        var sy = l._a.y + (l._b.y - l._a.y) * Math.max(0, pu - 0.12);
+        ectx.beginPath();
+        ectx.moveTo(sx, sy);
+        ectx.lineTo(l._a.x + (l._b.x - l._a.x) * pu, l._a.y + (l._b.y - l._a.y) * pu);
+        ectx.stroke();
+      });
+      ectx.restore();
     }
 
     Object.keys(AREAS).forEach(function (k) {
@@ -305,116 +332,135 @@
     }
   }
 
-  /* ══ 3 · THE CONTROL DATA ═══════════════════════════════════════════════════════════════════
-     The estate one level down: every object, and the dependencies between them.
+  /* ══ 3 · THE MAP, FULL BLEED ════════════════════════════════════════════════════════════════
+     The estate one level down, drawn at the size it deserves. Previously this was squeezed into a
+     narrow column beside the copy, where a graph of a thousand objects has nowhere to be a graph.
 
-     The nine-stop colour ramp that used to be here is deleted. It was borrowed from the product's
-     WebGL renderer, where hue encodes community position on a dark ground and additive blending
-     makes it read. On paper it was the one element on the site fighting the palette, and it made
-     the page look like a data-visualisation demo rather than a chart. Ink and terracotta only, and
-     the distinction the caption actually promises: evidenced solid, inferred dashed.
+     Rendered the way the product's own map is: dense clusters, dependencies between them,
+     evidence moving along the ones that have it. Ink and terracotta, because the nine-stop hue
+     ramp the real renderer uses is calibrated for additive blending on a dark ground and reads as
+     a data-visualisation demo on paper.
 
-     Motion is one thing, a levelling run: a traverse walks the mesh station to station, leaving a
-     trail that fades. Evidence being collected along dependencies, which is what the chapter says. */
+     Representative estate. A client's map carries real configuration, and organisation
+     descriptors in Workday can contain a person's name and employee id, so a harvested graph
+     never leaves the tenant it came from and certainly never lands on a public website. */
 
-  var mapCanvas = document.getElementById('mapFigure');
-  var mctx = mapCanvas ? mapCanvas.getContext('2d') : null;
+  var abg = document.getElementById('atlasBg');
+  var actx = abg ? abg.getContext('2d') : null;
 
   function rng(seed) {
     return function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
   }
 
-  var MESH = (function () {
-    var r = rng(4172026), nodes = [], links = [];
-    // Clusters, so the mesh has structure rather than being an even scatter.
-    var seeds = [[0.16,0.26],[0.42,0.14],[0.74,0.22],[0.24,0.68],[0.55,0.48],[0.82,0.62],[0.38,0.86],[0.68,0.84]];
-    seeds.forEach(function (c, ci) {
-      var first = nodes.length;
-      nodes.push({ x: c[0], y: c[1], hub: true, c: ci });
-      var n = 22 + Math.floor(r() * 20);
-      for (var i = 0; i < n; i++) {
-        var a = r() * Math.PI * 2, d = Math.pow(r(), 1.5) * 0.10;
-        nodes.push({ x: c[0] + Math.cos(a) * d, y: c[1] + Math.sin(a) * d * 0.72, c: ci });
-        links.push({ a: first, b: nodes.length - 1, ev: r() > 0.45 });
-      }
-      if (ci) links.push({ a: 0, b: first, ev: true, trunk: true });
-    });
-    for (var k = 0; k < 22; k++) {
-      var a2 = Math.floor(r() * nodes.length), b2 = Math.floor(r() * nodes.length);
-      if (a2 !== b2) links.push({ a: a2, b: b2, ev: r() > 0.5, trunk: true });
+  var ATLAS = (function () {
+    var r = rng(4172026), comms = [], nodes = [], links = [];
+    var N = 11;
+    for (var c = 0; c < N; c++) {
+      var a = (c / N) * Math.PI * 2 + r() * 0.3, rad = 0.20 + r() * 0.19;
+      comms.push({ x: 0.5 + Math.cos(a) * rad * 1.55, y: 0.5 + Math.sin(a) * rad });
     }
-    // the levelling route: hub to hub, the order a survey crew would walk it
-    var route = [];
-    for (var h = 0; h < nodes.length; h++) if (nodes[h].hub) route.push(h);
-    return { nodes: nodes, links: links, route: route };
+    comms.push({ x: 0.5, y: 0.5 });
+    comms.forEach(function (cm, ci) {
+      cm.first = nodes.length;
+      var n = 42 + Math.floor(r() * 46) + (ci === comms.length - 1 ? 80 : 0);
+      cm.n = n;
+      for (var i = 0; i < n; i++) {
+        var an = r() * Math.PI * 2, d = Math.pow(r(), 1.75) * (0.05 + r() * 0.045);
+        nodes.push({ x: cm.x + Math.cos(an) * d * 1.5, y: cm.y + Math.sin(an) * d,
+                     s: r() < 0.04 ? 2.3 : r() < 0.19 ? 1.35 : 0.85 });
+      }
+      for (var k = 0; k < n * 1.25; k++) {
+        var a1 = cm.first + Math.floor(r() * n), b1 = cm.first + Math.floor(r() * n);
+        if (a1 !== b1) links.push({ a: a1, b: b1, ev: r() < 0.36 });
+      }
+    });
+    for (var i2 = 0; i2 < comms.length; i2++) {
+      for (var q = 0; q < 4; q++) {
+        var o = Math.floor(r() * comms.length);
+        if (o === i2) continue;
+        for (var k2 = 0; k2 < 5; k2++) {
+          links.push({ a: comms[i2].first + Math.floor(r() * comms[i2].n),
+                       b: comms[o].first + Math.floor(r() * comms[o].n),
+                       ev: r() < 0.6, trunk: true });
+        }
+      }
+    }
+    var xs = nodes.map(function (n) { return n.x; }), ys = nodes.map(function (n) { return n.y; });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    nodes.forEach(function (n) { n.x = (n.x - x0) / (x1 - x0 || 1); n.y = (n.y - y0) / (y1 - y0 || 1); });
+
+    var ev = [];
+    links.forEach(function (l, i) { if (l.ev) ev.push(i); });
+    var step = Math.max(1, Math.floor(ev.length / 300)), flow = [];
+    for (var f = 0; f < ev.length; f += step) flow.push({ e: ev[f], u: r(), v: 0.05 + r() * 0.13 });
+    return { nodes: nodes, links: links, flow: flow };
   })();
 
-  var mapW = 0, mapH = 0, mapDpr = 1, plate = null;
-  function mapPx(n) { return { x: 18 + n.x * (mapW - 36), y: 16 + n.y * (mapH - 32) }; }
+  var aW = 0, aH = 0, aDpr = 1, aPlate = null, aVisible = false;
+  function aPx(n) { return { x: 30 + n.x * (aW - 60), y: 26 + n.y * (aH - 52) }; }
 
-  function buildPlate() {
-    plate = document.createElement('canvas');
-    plate.width = Math.round(mapW * mapDpr); plate.height = Math.round(mapH * mapDpr);
-    var g = plate.getContext('2d');
-    g.setTransform(mapDpr, 0, 0, mapDpr, 0, 0);
-    MESH.links.forEach(function (l) {
-      var A = mapPx(MESH.nodes[l.a]), B = mapPx(MESH.nodes[l.b]);
+  function buildAtlasPlate() {
+    aPlate = document.createElement('canvas');
+    aPlate.width = Math.round(aW * aDpr); aPlate.height = Math.round(aH * aDpr);
+    var g = aPlate.getContext('2d');
+    g.setTransform(aDpr, 0, 0, aDpr, 0, 0);
+    ATLAS.links.forEach(function (l) {
+      var A = aPx(ATLAS.nodes[l.a]), B = aPx(ATLAS.nodes[l.b]);
       g.save();
-      g.strokeStyle = 'rgba(22,25,26,' + (l.ev ? (l.trunk ? 0.34 : 0.22) : 0.13) + ')';
-      g.lineWidth = l.trunk ? 0.9 : 0.6;
+      g.strokeStyle = 'rgba(22,25,26,' + (l.ev ? (l.trunk ? 0.16 : 0.09) : 0.055) + ')';
+      g.lineWidth = l.trunk ? 0.75 : 0.5;
       if (!l.ev) g.setLineDash([1.5, 3]);
       g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.stroke();
       g.restore();
     });
-    MESH.nodes.forEach(function (n) {
-      var P = mapPx(n);
-      g.fillStyle = 'rgba(22,25,26,' + (n.hub ? 0.62 : 0.3) + ')';
-      if (n.hub) g.fillRect(P.x - 2.4, P.y - 2.4, 4.8, 4.8);
-      else { g.beginPath(); g.arc(P.x, P.y, 1.25, 0, 6.284); g.fill(); }
+    ATLAS.nodes.forEach(function (n) {
+      var P = aPx(n);
+      g.fillStyle = 'rgba(22,25,26,' + (n.s > 2 ? 0.5 : n.s > 1 ? 0.3 : 0.17) + ')';
+      g.beginPath(); g.arc(P.x, P.y, n.s, 0, 6.284); g.fill();
     });
   }
 
-  function sizeMap() {
-    if (!mctx) return;
-    var r = mapCanvas.getBoundingClientRect();
-    mapDpr = Math.min(window.devicePixelRatio || 1, 2);
-    mapW = Math.max(1, Math.round(r.width)); mapH = Math.max(1, Math.round(r.height));
-    mapCanvas.width = Math.round(mapW * mapDpr); mapCanvas.height = Math.round(mapH * mapDpr);
-    mctx.setTransform(mapDpr, 0, 0, mapDpr, 0, 0);
-    buildPlate();
+  function sizeAtlas() {
+    if (!actx || !abg) return;
+    var r = abg.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    aDpr = Math.min(window.devicePixelRatio || 1, 2);
+    aW = Math.round(r.width); aH = Math.round(r.height);
+    abg.width = Math.round(aW * aDpr); abg.height = Math.round(aH * aDpr);
+    actx.setTransform(aDpr, 0, 0, aDpr, 0, 0);
+    buildAtlasPlate();
   }
 
-  var TRAVERSE = { i: 0, u: 0, trail: [] };
-  function paintMap(t) {
-    if (!mctx || !plate) return;
-    mctx.setTransform(1, 0, 0, 1, 0, 0);
-    mctx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
-    mctx.drawImage(plate, 0, 0);
-    mctx.setTransform(mapDpr, 0, 0, mapDpr, 0, 0);
-    if (reduce || !MESH.route.length) return;
-
-    TRAVERSE.u += 0.0075;
-    if (TRAVERSE.u >= 1) {
-      TRAVERSE.u = 0;
-      TRAVERSE.i = (TRAVERSE.i + 1) % MESH.route.length;
-    }
-    var a = MESH.nodes[MESH.route[TRAVERSE.i]];
-    var b = MESH.nodes[MESH.route[(TRAVERSE.i + 1) % MESH.route.length]];
-    var A = mapPx(a), B = mapPx(b);
-    var x = A.x + (B.x - A.x) * TRAVERSE.u, y = A.y + (B.y - A.y) * TRAVERSE.u;
-    TRAVERSE.trail.push({ x: x, y: y, t: t });
-    while (TRAVERSE.trail.length > 150) TRAVERSE.trail.shift();
-
-    mctx.save();
-    mctx.strokeStyle = 'rgba(184,67,30,.5)';
-    mctx.lineWidth = 1.1;
-    mctx.beginPath();
-    TRAVERSE.trail.forEach(function (q, i) { i ? mctx.lineTo(q.x, q.y) : mctx.moveTo(q.x, q.y); });
-    mctx.stroke();
-    mctx.fillStyle = 'rgba(184,67,30,.95)';
-    mctx.beginPath(); mctx.arc(x, y, 2.4, 0, 6.284); mctx.fill();
-    mctx.restore();
+  function paintAtlas(t) {
+    if (!actx || !aPlate || !aVisible) return;
+    actx.setTransform(1, 0, 0, 1, 0, 0);
+    actx.clearRect(0, 0, abg.width, abg.height);
+    actx.drawImage(aPlate, 0, 0);
+    actx.setTransform(aDpr, 0, 0, aDpr, 0, 0);
+    if (reduce) return;
+    var secs = t / 1000;
+    ATLAS.flow.forEach(function (f) {
+      var l = ATLAS.links[f.e];
+      var A = aPx(ATLAS.nodes[l.a]), B = aPx(ATLAS.nodes[l.b]);
+      var u = (f.u + secs * f.v) % 1;
+      // a tapered streak rather than a dot: it reads as travel, and it reads as fast
+      for (var k = 0; k < 4; k++) {
+        var uu = u - k * 0.018;
+        if (uu < 0) continue;
+        actx.fillStyle = 'rgba(184,67,30,' + (0.62 - k * 0.14) + ')';
+        actx.beginPath();
+        actx.arc(A.x + (B.x - A.x) * uu, A.y + (B.y - A.y) * uu, 1.5 - k * 0.3, 0, 6.284);
+        actx.fill();
+      }
+    });
   }
+
+  if (abg && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (rows) {
+      rows.forEach(function (r) { aVisible = r.isIntersecting; if (r.isIntersecting && !aPlate) sizeAtlas(); });
+    }, { rootMargin: '200px' }).observe(abg);
+  } else { aVisible = true; }
 
   /* ══ the loop ═══════════════════════════════════════════════════════════════════════════════ */
 
@@ -423,25 +469,22 @@
     queued = false;
     var raw = boardAct ? parseFloat(boardAct.style.getPropertyValue('--sc-p')) : 0;
     paintEstate(isNaN(raw) ? 0 : raw, now || 0);
-    paintMap(now || 0);
+    paintAtlas(now || 0);
     tick();
   }
   function tick() { if (queued) return; queued = true; requestAnimationFrame(frame); }
 
   ledgerRender();
   sizeEstate();
-  sizeMap();
+  sizeAtlas();
   paintEstate(0, 0);
   tick();
 
   if (window.ResizeObserver && estateEl) new ResizeObserver(sizeEstate).observe(estateEl);
   else window.addEventListener('resize', sizeEstate);
 
-  if (window.ResizeObserver && mapCanvas) {
-    new ResizeObserver(sizeMap).observe(mapCanvas);
-  } else {
-    window.addEventListener('resize', sizeMap);
-  }
+  if (window.ResizeObserver && abg) new ResizeObserver(sizeAtlas).observe(abg);
+  else window.addEventListener('resize', sizeAtlas);
 
   // Reduced motion keeps the meaning and drops the theatre: the cycle still advances with scroll,
   // it just does not hold anything back to make an entrance.

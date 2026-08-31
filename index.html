@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Atlas AI Consulting · the whole of Workday, run properly</title>
-<meta name="description" content="A full scope Workday consulting practice. Senior consultants, purpose-built tooling, every functional area watched, and an audit line behind every change.">
+<meta name="description" content="A full scope Workday consulting practice. Senior consultants, every functional area watched, and an audit line behind every change. Powered by Alpaca Tools.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23F3F4F1'/><path d='M8 23V9l8 7 8-7v14' fill='none' stroke='%23B8431E' stroke-width='2.6'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -178,11 +178,20 @@
 
   .nd {
     position: absolute; transform: translate(-50%, -50%);
-    display: grid; gap: .15em; justify-items: center; text-align: center;
-    padding: .5em .8em; border: 1px solid var(--rule); border-radius: var(--sc-r-sm);
-    background: var(--paper-2); box-shadow: var(--sc-e1); white-space: nowrap;
+    display: grid; gap: .1em; justify-items: center; text-align: center;
+    padding: .45em .85em; border: 1px solid rgba(22,25,26,.18); border-radius: 3px;
+    background: rgba(255,255,255,.96); box-shadow: 0 1px 0 rgba(22,25,26,.05), 0 4px 14px rgba(22,25,26,.06);
+    white-space: nowrap; backdrop-filter: blur(3px);
     transition: border-color .25s ease, box-shadow .25s ease, background .25s ease;
   }
+  .nd::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+    background: rgba(22,25,26,.18);
+  }
+  .nd.is-hub::before { background: var(--sc-accent); }
+  .nd.is-out::before { background: repeating-linear-gradient(90deg, rgba(22,25,26,.22) 0 3px, transparent 3px 6px); }
+  .nd.is-raised::before { background: var(--watch); }
+  .nd.is-fixed::before { background: var(--ok); }
   .nd b { font-size: var(--sc-t-sm); font-weight: 600; letter-spacing: -.01em; }
   .nd i { font-family: var(--sc-font-mono); font-size: 9.5px; font-style: normal;
           font-variant-numeric: tabular-nums; color: var(--sc-ink-soft); letter-spacing: .03em; }
@@ -202,8 +211,24 @@
   #estateNote { margin-left: auto; }
 
   /* ── chapter IV: media in its own column, with a caption. Never under the type. ─────────── */
-  .plate canvas { display: block; width: 100%; height: 24rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--sc-r-sm); }
-  .plate__note { margin: var(--sc-3) 0 0; max-width: 46ch; font-size: var(--sc-t-sm); line-height: var(--sc-leading-body); color: var(--sc-ink-soft); }
+  /* Chapter IV is the map. The copy sits on a paper scrim over it, which is the same
+     cartographic convention the survey uses to keep type off contour hatching. */
+  .chapter--map { position: relative; overflow: hidden; background: #FBFBFA; border-block: 1px solid var(--rule-soft); }
+  #atlasBg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* The copy needs its own ground. A pseudo-element at z-index -1 renders BEHIND the canvas,
+     because the canvas is positioned in the same stacking context: the scrim has to be a real
+     background on a layer above it. */
+  .chapter--map .sheet { position: relative; z-index: 1; }
+  .map-copy {
+    position: relative; max-width: 44rem;
+    padding: var(--sc-6) var(--sc-7) var(--sc-6) var(--sc-5);
+    margin-left: calc(var(--sc-5) * -1);
+    background: linear-gradient(90deg,
+      rgba(251,251,250,.985) 0%, rgba(251,251,250,.965) 58%, rgba(251,251,250,.90) 84%, rgba(251,251,250,0) 100%);
+  }
+  /* The trail is read over the map too, so it gets the same treatment. */
+  .ledger { background: linear-gradient(90deg, rgba(243,244,241,.94) 0%, rgba(243,244,241,.80) 100%); }
+  .map-note { margin: var(--sc-5) 0 0; font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
   .evidence { margin: var(--sc-5) 0 0; padding: 0; list-style: none; }
   .evidence li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: var(--sc-3); padding: .55em 0; border-top: 1px solid var(--rule-soft); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
   .evidence b { color: var(--sc-ink); font-weight: 500; }
@@ -222,6 +247,7 @@
   .colophon p.say { max-width: 34ch; margin: 0 0 var(--sc-5); font-family: var(--sc-font-display); font-size: var(--sc-t-xl); line-height: var(--sc-leading-tight); }
   .colophon a { color: var(--sc-accent); text-decoration: none; border-bottom: 1px solid currentColor; }
   .colophon a:focus-visible, .masthead a:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 3px; }
+  .powered { color: var(--sc-accent); letter-spacing: .04em; }
   .imprint { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--sc-4); margin-top: var(--sc-6); padding-top: var(--sc-4); border-top: 1px solid var(--rule); font-family: var(--sc-font-mono); font-size: var(--sc-t-xs); line-height: 1.6; color: var(--sc-ink-soft); }
 
   /* The CONTENT is offset to leave the margin the ledger lives in, the way a printed page with
@@ -229,7 +255,7 @@
      query earlier in the stylesheet loses to a later `padding` shorthand, which is why the
      ledger kept printing over the page. */
   @media (min-width: 1321px) {
-    .sheet, .estate-stage, .plate, .masthead { padding-left: calc(var(--sc-gutter) + 15rem); }
+    .sheet, .estate-stage, .masthead { padding-left: calc(var(--sc-gutter) + 15rem); }
   }
 
   @media (max-width: 900px) {
@@ -242,7 +268,8 @@
     .nd.is-hub b { font-size: 12px; }
     .title { font-size: var(--sc-t-2xl); }
     h2.ch { font-size: var(--sc-t-xl); }
-    .plate canvas { height: 15rem; }
+    .chapter--map { min-height: 78vh; }
+    .map-copy { padding-right: 0; }
   }
 </style>
 </head>
@@ -368,26 +395,23 @@
     </div>
   </section>
 
-  <!-- IV · parallax in the media column. The Atlas map appears here, as a figure, once. -->
-  <section class="chapter chapter--paper" data-sc-act="flow" data-ch="IV" data-title="How we know">
+  <!-- IV · the chapter is the map. The plate was a narrow column with a graph squeezed into it;
+       full bleed, the same drawing has room to be one. -->
+  <section class="chapter chapter--map" data-sc-act="flow" data-ch="IV" data-title="How we know">
+    <canvas id="atlasBg" aria-hidden="true"></canvas>
     <div class="sheet">
-      <div class="spread">
-        <div data-sc-in data-sc-stagger="70">
-          <p class="eyebrow"><b>Chapter IV</b></p>
-          <h2 class="ch">The board is only as good as what sits underneath it.</h2>
-          <p class="body">Before anything is watched, it is mapped. A read only harvest builds a picture of how your tenant is actually wired: which integrations feed which reports, which security domains govern which processes, and what a change to any one of them would touch.</p>
-          <p class="body">That map is why an amber on the board can name a cause rather than a symptom, and why a question about last March has an answer with a date on it.</p>
-          <ul class="evidence">
-            <li><b>Harvest</b><span>read only. Nothing is written to your tenant to build the picture.</span></li>
-            <li><b>Evidence</b><span>every dependency is marked verified or inferred, and says which.</span></li>
-            <li><b>Change</b><span>simulated first. Nothing reaches production unsimulated.</span></li>
-            <li><b>Record</b><span>who, what, when, and the check that passed, kept as it happens.</span></li>
-          </ul>
-        </div>
-        <div class="plate" data-sc-parallax="0.25">
-          <canvas id="mapFigure" aria-hidden="true"></canvas>
-          <p class="plate__note">The same estate, one level down: every object and every dependency between them. This is what the areas above are actually made of, and what tells you a change to one of them reaches the others.</p>
-        </div>
+      <div class="map-copy" data-sc-in data-sc-stagger="70">
+        <p class="eyebrow"><b>Chapter IV</b> · the estate, one level down</p>
+        <h2 class="ch">Every object, and everything that depends on it.</h2>
+        <p class="body">Before anything is watched, it is mapped. A read only harvest builds a picture of how your tenant is actually wired: which integrations feed which reports, which security domains govern which processes, and what a change to any one of them would touch.</p>
+        <p class="body">That map is why an amber on the board can name a cause rather than a symptom, and why a question about last March has an answer with a date on it.</p>
+        <ul class="evidence">
+          <li><b>Harvest</b><span>read only. Nothing is written to your tenant to build the picture.</span></li>
+          <li><b>Evidence</b><span>every dependency is marked verified or inferred, and says which.</span></li>
+          <li><b>Change</b><span>simulated first. Nothing reaches production unsimulated.</span></li>
+          <li><b>Record</b><span>who, what, when, and the check that passed, kept as it happens.</span></li>
+        </ul>
+        <p class="map-note">Representative estate. A client's map is client data and stays in their tenant.</p>
       </div>
     </div>
   </section>
@@ -399,7 +423,7 @@
       <p class="body">A working session is one conversation about one area with a senior consultant who has run it before. There is no deck. Write to <a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a> and say which area it is.</p>
       <div class="survey-stamp" id="surveyStamp" aria-hidden="true">Surveyed · complete · 2026 · sheet 1 of 1 · Atlas AI Consulting</div>
       <div class="imprint">
-        <span><b>Atlas AI Consulting</b><br>Workday consulting practice</span>
+        <span><b>Atlas AI Consulting</b><br>Workday consulting practice<br><span class="powered">Powered by Alpaca Tools&trade;</span></span>
         <span><a href="mailto:hello@atlasaiconsultingllc.com">hello@atlasaiconsultingllc.com</a></span>
         <span>Workday is a trademark of Workday, Inc. We are not affiliated with, sponsored by, or endorsed by Workday.</span>
       </div>
